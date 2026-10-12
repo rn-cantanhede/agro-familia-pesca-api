@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const Erros = require("../shared/errors/Errors");
 const { findBy, updateData } = require("../shared/Utils/dbUtils");
 const authToken = require("../shared/Utils/authToken");
+const secureLogger = require("../config/secureLogger");
 
 /**
  * Exporta um middleware de autenticação.
@@ -15,6 +16,12 @@ module.exports = async function auth(req, res, next) {
 
     if (!token) {
         req.log.warn({
+            event: "AUTH_TOKEN_WARN",
+            resource: "authentication",
+            action: "login"
+        }, "Token não informado");
+
+        secureLogger.warn({
             event: "AUTH_TOKEN_WARN",
             resource: "authentication",
             action: "login"
@@ -39,6 +46,12 @@ module.exports = async function auth(req, res, next) {
                 action: "auth"
             }, "Sessão não encontrada");
 
+            secureLogger.error({
+                event: "AUTH_TOKEN_WARN",
+                resource: "authentication",
+                action: "auth"
+            }, "Sessão não encontrada");
+
             return next(new Erros("Sessão não encontrada", 404));
         };
 
@@ -49,11 +62,23 @@ module.exports = async function auth(req, res, next) {
                 action: "auth"
             }, "Sessão expirada");
 
+            secureLogger.warn({
+                event: "AUTH_TOKEN_WARN",
+                resource: "authentication",
+                action: "auth"
+            }, "Sessão expirada");
+
             return next(new Erros("Sessão expirada", 400));
         };
 
         if (sessao.result.REVOGADO != null) {
             req.log.error({
+                event: "AUTH_TOKEN_WARN",
+                resource: "authentication",
+                action: "auth"
+            }, "Sessão revogada");
+
+            secureLogger.warn({
                 event: "AUTH_TOKEN_WARN",
                 resource: "authentication",
                 action: "auth"
@@ -83,6 +108,12 @@ module.exports = async function auth(req, res, next) {
                 action: "auth"
             }, "Inconsistência na geração do token");
 
+            secureLogger.warn({
+                event: "AUTH_TOKEN_WARN",
+                resource: "authentication",
+                action: "auth"
+            }, "Inconsistência na geração do token");
+
             return next(new Erros(
                 "Inconsistência na geração do token. Realize login novamente",
                 400
@@ -99,6 +130,13 @@ module.exports = async function auth(req, res, next) {
             usuarioId: req.session.user.id,
         }, "Token válido");
 
+        secureLogger.info({
+            event: "AUTH_TOKEN",
+            resource: "authentication",
+            action: "auth",
+            usuarioId: req.session.user.id,
+        }, "Token válido");
+
         return next();
     } catch (error) {
         if (error.name === "TokenExpiredError") {
@@ -109,10 +147,24 @@ module.exports = async function auth(req, res, next) {
                 usuarioId: req.session.user.id,
             }, "Token expirou");
 
+            secureLogger.info({
+                event: "AUTH_TOKEN",
+                resource: "authentication",
+                action: "auth",
+                usuarioId: req.session.user.id,
+            }, "Token expirou");
+
             const decoded = jwt.decode(token);
 
             if (!decoded.id) {
                 req.log.error({
+                    event: "AUTH_TOKEN",
+                    resource: "authentication",
+                    action: "auth",
+                    usuarioId: req.session.user.id,
+                }, "Token inválido");
+                
+                secureLogger.error({
                     event: "AUTH_TOKEN",
                     resource: "authentication",
                     action: "auth",
@@ -139,6 +191,13 @@ module.exports = async function auth(req, res, next) {
                     usuarioId: req.session.user.id,
                 }, "Sessão não encontrada");
 
+                secureLogger.error({
+                    event: "AUTH_TOKEN",
+                    resource: "authentication",
+                    action: "auth",
+                    usuarioId: req.session.user.id,
+                }, "Sessão não encontrada");
+
                 return next(new Erros("Sessão não encontrada", 404));
             };
 
@@ -150,6 +209,13 @@ module.exports = async function auth(req, res, next) {
             req.session.token = newToken.token;
 
             req.log.info({
+                event: "AUTH_TOKEN",
+                resource: "authentication",
+                action: "auth",
+                usuarioId: req.session.user.id,
+            }, "Token gerado");
+
+            secureLogger.info({
                 event: "AUTH_TOKEN",
                 resource: "authentication",
                 action: "auth",
