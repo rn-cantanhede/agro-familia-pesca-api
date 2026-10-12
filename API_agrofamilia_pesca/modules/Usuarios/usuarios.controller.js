@@ -1,3 +1,4 @@
+const secureLogger = require("../../config/secureLogger");
 const { convertString } = require("../../shared/Utils/findUtils");
 const Hateoas = require("../../shared/Utils/hateoas");
 const UsuariosService = require("./usuarios.service");
@@ -528,6 +529,13 @@ class UsuariosController {
                     reason: "INVALID_CREDENTIALS"
                 }, "Falha na autenticação");
 
+                secureLogger.warn({
+                    event: "AUTH_LOGIN_FAILED",
+                    resource: "usuario",
+                    action: "login",
+                    reason: "INVALID_CREDENTIALS"
+                }, "Falha na autenticação");
+
                 return res.status(401).json({ Error: "Login invalido" });
             };
 
@@ -541,6 +549,12 @@ class UsuariosController {
                 resource: "usuario",
                 action: "login",
             }, "Login realizado");
+            
+            secureLogger.info({
+                event: "AUTH_LOGIN",
+                resource: "usuario",
+                action: "login",
+            }, "Login realizado");
 
             return res.status(200).json({
                 Message: "Login realizado",
@@ -550,6 +564,13 @@ class UsuariosController {
             });
         } catch (error) {
             req.log.warn({
+                event: "AUTH_LOGIN_ERROR",
+                resource: "usuario",
+                action: "login",
+                reason: "INVALID_CREDENTIALS"
+            }, "Falha na autenticação");
+
+            secureLogger.warn({
                 event: "AUTH_LOGIN_ERROR",
                 resource: "usuario",
                 action: "login",
