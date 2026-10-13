@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  check:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: API_agrofamilia_pesca/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: API_agrofamilia_pesca
+        run: npm ci
+
+      - name: Verificar sintaxe
+        working-directory: API_agrofamilia_pesca
+        run: node --check server.js
+
+      - name: Executar testes
+        working-directory: API_agrofamilia_pesca
+        run: npm test
