@@ -1,5 +1,6 @@
 const rateLimiter = require("express-rate-limit");
 const logger = require("../config/logger");
+const secureLogger = require("../config/secureLogger");
 const { createClient } = require("redis");
 const { RedisStore } = require("rate-limit-redis");
 
@@ -22,6 +23,12 @@ const loginLimiter = rateLimiter({
     limit: 5,
     message: () => {
         logger.warn({
+            event: "RATE_LIMITER",
+            resource: "authentication",
+            action: "login"
+        }, "Muitas tentativas de login. Tente novamente mais tarde");
+        
+        secureLogger.warn({
             event: "RATE_LIMITER",
             resource: "authentication",
             action: "login"
