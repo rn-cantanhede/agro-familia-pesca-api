@@ -1,3 +1,4 @@
+const secureLogger = require("../config/secureLogger");
 const Erros = require("../shared/errors/Errors");
 
 /**
@@ -18,6 +19,13 @@ module.exports = function authorize(nivel) {
                 usuarioId: req.session.user.id,
             }, "Usuário não autenticado");
 
+            secureLogger.warn({
+                event: "AUTH_ERROR",
+                resource: "authentication",
+                action: "authorize",
+                usuarioId: req.session.user.id,
+            }, "Usuário não autenticado");
+
             return next(new Erros("Usuário não autenticado", 401));
         };
 
@@ -29,10 +37,24 @@ module.exports = function authorize(nivel) {
                 usuarioId: req.session.user.id,
             }, "Sem permissão");
 
+            secureLogger.error({
+                event: "AUTHORIZATION_DENIED",
+                resource: "authorization",
+                action: "authorize",
+                usuarioId: req.session.user.id,
+            }, "Sem permissão");
+
             return next(new Erros("Sem permissão", 403));
         };
 
         req.log.info({
+            event: "AUTHORIZATION",
+            resource: "authorization",
+            action: "authorize",
+            usuarioId: req.session.user.id,
+        }, "Usuário autorizado");
+
+        secureLogger.info({
             event: "AUTHORIZATION",
             resource: "authorization",
             action: "authorize",
