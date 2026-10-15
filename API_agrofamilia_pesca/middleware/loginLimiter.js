@@ -26,7 +26,7 @@ Após iniciar o Redis em qualquer ambiente:
 
 Depois:
   1. Configure REDIS_URL no .env.
-  2. Descomente a configuração do Redis abaixo e store no session.
+  2. Descomente a configuração do Redis abaixo e store.
   3. Inicie a aplicação.
 
 Observação:
