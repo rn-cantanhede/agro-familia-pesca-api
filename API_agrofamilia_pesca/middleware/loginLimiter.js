@@ -8,15 +8,41 @@ const { RedisStore } = require("rate-limit-redis");
  * Aplica o rate limiter com no máximo de 5 requisições
  * Retorna os headers informando o limite e não usa os antigos
  */
-const redisClient = createClient({
-    url: process.env.REDIS || "redis://localhost:6379"
-});
 
-redisClient.on("error", (erro) => {
-    logger.error(erro, "Erro na conexão com Redis");
-});
+/**
+ * Configuração do Redis para armazenamento do rate-limit.
+ * Mantém o rate-limit fora da aplicação e permite compartilhá-los entre instâncias.
+ * Requer um Redis Server em execução e a variável REDIS_URL configurada.
+ */
 
-redisClient.connect();
+/**
+ * Redis opcional.
+
+Para utilizar Redis, é necessário ter um Redis Server executando localmente.
+
+Após iniciar o Redis em qualquer ambiente:
+
+  REDIS_URL=redis://localhost:6379
+
+Depois:
+  1. Configure REDIS_URL no .env.
+  2. Descomente a configuração do Redis abaixo e store no session.
+  3. Inicie a aplicação.
+
+Observação:
+O pacote "redis" é apenas o cliente Redis para Node.js.
+Ele NÃO instala o Redis Server.
+ */
+
+// const redisClient = createClient({
+//     url: process.env.REDIS || "redis://localhost:6379"
+// });
+
+// redisClient.on("error", (erro) => {
+//     logger.error(erro, "Erro na conexão com Redis");
+// });
+
+// redisClient.connect();
 
 const loginLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
@@ -44,10 +70,10 @@ const loginLimiter = rateLimiter({
     standardHeaders: "draft-8",
     legacyHeaders: false,
 
-    store: new RedisStore({
-        sendCommand: (...limit) => redisClient.sendCommand(limit),
-        prefix: 'rate-limit:'
-    }),
+    // store: new RedisStore({
+    //     sendCommand: (...limit) => redisClient.sendCommand(limit),
+    //     prefix: 'rate-limit:'
+    // }),
 });
 
 module.exports = loginLimiter;
