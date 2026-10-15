@@ -1,158 +1,204 @@
-# **Agro Família Pesca (Grupo B)**
+# Agro Família Pesca
 
-Sistema de Gerenciamento da **Agricultura Familiar e Pesca Artesanal**, desenvolvido para apoiar Secretarias Municipais e Associações no controle de produtores, programas governamentais e movimentações produtivas.
+Sistema de gerenciamento da **agricultura familiar e da pesca artesanal**, desenvolvido para apoiar Secretarias Municipais e Associações no controle de produtores, programas governamentais e movimentações produtivas.
 
-Projeto acadêmico desenvolvido no **IFMA** como parte do curso de **Especialização em Back-end com Node.js**.
+Projeto acadêmico desenvolvido no **Instituto Federal do Maranhão (IFMA)**, como parte da Especialização em Back-end com Node.js.
 
-## **Objetivo do Projeto**
+## Objetivo do Projeto
 
-O **Agro Família Pesca** tem como objetivo centralizar e organizar dados relacionados à agricultura familiar e pesca artesanal, oferecendo:
+O Agro Família Pesca tem como objetivo centralizar e organizar dados relacionados à agricultura familiar e à pesca artesanal, oferecendo:
 
-* Controle de acesso por nível de usuário
-* Controle de escopo dos dados
-* Autenticação e gerenciamento de sessões
-* Segurança institucional
-* Paginação das consultas
-* Respostas padronizadas com HATEOAS
-* Organização modular
-* Base sólida para futuras expansões tecnológicas no setor público
+- Controle de acesso por nível de usuário;
+- Controle de escopo dos dados;
+- Autenticação e gerenciamento de sessões;
+- Segurança institucional;
+- Paginação das consultas;
+- Respostas com links de navegação utilizando HATEOAS;
+- Organização modular;
+- Base para futuras expansões tecnológicas no setor público.
 
-## **Estrutura do Repositório**
+## Estrutura do Repositório
 
-`grupo-b-ifma/`
+A API principal está organizada diretamente na raiz do repositório.
 
-`├── API_agrofamilia_pesca/   # API principal (completa)`
+```text
+agro-familia-pesca-api/
+├── modules/
+│   ├── usuarios/
+│   ├── secretarias/
+│   ├── associacoes/
+│   ├── produtos/
+│   ├── movimentacoes/
+│   └── programas/
+├── shared/
+├── database/
+├── config/
+├── middleware/
+├── routes/
+├── docs/
+├── .github/
+│   └── workflows/
+├── package.json
+├── package-lock.json
+├── server.js
+├── README.md
+└── SECURITY.md
+```
 
-`├── API_Simplificada/        # API reduzida (didática)`
+A estrutura acima representa a organização geral da API. Os diretórios e arquivos específicos devem corresponder à implementação atual do repositório.
 
-`├── consumo/                 # Front-end estático para testes`
+## Tecnologias Utilizadas
 
-`└── docs/                    # Documentação acadêmica e técnica`
+### Backend
 
-### **Foco do Sistema**
+- Node.js
+- Express.js
+- MySQL
+- Knex.js
+- JWT (JSON Web Token)
+- express-session
+- connect-redis
+- redis
+- bcryptjs
+- Pino
+- Pino HTTP
+- express-rate-limit
+- dotenv
+- nodemon
 
-Este repositório possui múltiplos projetos, porém o **núcleo funcional e completo** está na pasta: **`API_agrofamilia_pesca`**
+### Testes e Qualidade
 
-## **Tecnologias Utilizadas**
+- Jest
+- Supertest
+- GitHub Actions / CI
 
-### **Backend**
+### Ferramentas de Teste Manual
 
-* **Node.js**
-* **Express.js**
-* **MySQL**
-* **Knex.js**
-* **JWT (JSON Web Token)**
-* **express-session**
-* **connect-redis**
-* **redis**
-* **bcryptjs**
-* **Pino**
-* **Pino HTTP**
-* **express-rate-limit**
-* **dotenv**
-* **nodemon**
+- Insomnia
+- Postman
 
-### **Testes e Qualidade**
+## Requisitos do Sistema
 
-* **Jest**
-* **Supertest**
-* **@types/jest**
-* **GitHub Actions / CI**
+- Node.js 22
+- npm
+- MySQL
+- Redis, caso a persistência de sessões via Redis esteja habilitada
+- Insomnia ou Postman, para testes manuais da API
 
-### **Ferramentas de Teste da API**
-
-* Insomnia
-* Postman
-
-## **Requisitos do Sistema**
-
-* Node.js
-* MySQL
-* NPM ou Yarn
-* Insomnia ou Postman (para testes)
-
-### **Redis — Opcional**
+### Redis — Opcional
 
 O Redis pode ser utilizado como armazenamento externo para as sessões da aplicação.
 
-A utilização do Redis **não é obrigatória** para executar o projeto. Quando habilitado, é necessário possuir um servidor Redis em execução e configurar a variável `REDIS_URL`.
+Sua utilização depende da configuração adotada. Quando a persistência de sessões via Redis estiver habilitada, é necessário possuir um servidor Redis em execução e configurar a variável `REDIS_URL`.
 
-O pacote `redis` utilizado pelo Node.js é apenas o cliente de comunicação com o servidor Redis; ele não instala ou executa o servidor Redis.
+O pacote `redis` utilizado pelo Node.js é apenas o cliente de comunicação com o servidor Redis; ele não instala nem executa o servidor Redis.
 
-## **Instalação e Execução**
+## Instalação e Execução
 
-### **Clonar o repositório**
+### 1. Clonar o Repositório
 
-`git clone https://github.com/rn-cantanhede/grupo-b-ifma`
+```bash
+git clone https://github.com/rn-cantanhede/agro-familia-pesca-api.git
+cd agro-familia-pesca-api
+```
 
-`cd API_agrofamilia_pesca`
+### 2. Instalar as Dependências
 
-### **Instalar dependências**
+Execute na raiz do repositório:
 
-`npm install`
+```bash
+npm ci
+```
 
-## **Configuração do Banco de Dados**
+Em ambiente de desenvolvimento, também é possível utilizar:
 
-### **Criar arquivo `.env`**
+```bash
+npm install
+```
 
-Na raiz de `API_agrofamilia_pesca`:
+### 3. Configurar as Variáveis de Ambiente
 
-`PORT=3000`
+Crie um arquivo `.env` na raiz do projeto:
 
-`DB_HOST=localhost`
+```dotenv
+NODE_ENV=development
 
-`DB_USER=root`
+URL=http://localhost:3000/
 
-`DB_PASSWORD=senha`
+REDIS=redis://localhost:6379
 
-`DB_NAME=db_agrofamilia_pesca`
+SESSION_NAME_DEV=auth
+SESSION_NAME_PRO=__Host-auth
+SESSION_SECURE=false
 
-`SESSION_SECRET=chave_secreta`
+LOG_LEVEL=debug
 
-`REDIS_URL=redis://localhost:6379`
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=senha
+DB_NAME=db_agrofamilia_pesca
 
-> `REDIS_URL` é necessária apenas quando a persistência de sessões através do Redis estiver habilitada.
+PORT=3000
+JWT_SECRET=chave_secreta
+SESSION_SECRET=chave_secreta
+```
 
-### **Configuração do Banco de Dados**
+Ajuste os valores de acordo com seu ambiente.
 
-A aplicação realiza automaticamente a configuração da estrutura do banco de dados durante a inicialização.
+**Importante:** não versione credenciais reais, senhas ou segredos no Git.
 
-O versionamento da estrutura utiliza Knex Migrations, enquanto os dados iniciais são gerenciados através de Knex Seeds.
+A variável `REDIS_URL` só é necessária quando a persistência de sessões através do Redis estiver habilitada.
 
-Não é necessário executar scripts SQL manualmente para preparar o banco de dados.
+### 4. Configuração do Banco de Dados
 
-## **Executando a API**
+A aplicação realiza a configuração da estrutura do banco de dados durante a inicialização.
 
-`npm start`
+O versionamento da estrutura utiliza **Knex Migrations**, enquanto os dados iniciais são gerenciados por **Knex Seeds**.
 
-Ou em modo desenvolvimento:
+Não é necessário executar manualmente os antigos scripts SQL para preparar a estrutura do banco de dados. O servidor MySQL precisa estar em execução e acessível, com as credenciais configuradas corretamente.
 
-`nodemon server.js`
+### 5. Executar a API
 
-Servidor iniciado em:
+Para iniciar a aplicação:
 
-`http://localhost:3000`
+```bash
+npm start
+```
 
-## **Autenticação e Gerenciamento de Sessões**
+Em modo de desenvolvimento:
 
-A API utiliza **JWT (JSON Web Token)** em conjunto com gerenciamento persistente de sessões.
+```bash
+nodemon || nodemon server.js
+```
 
-O sistema possui:
+Por padrão, o servidor fica disponível em:
 
-* Access token;
-* Refresh token;
-* Registro das sessões no banco de dados;
-* Controle de sessões revogadas, expiradas ou inexistentes;
-* Validação de inconsistências entre os dados da sessão e do token;
-* Renovação/reutilização do refresh token enquanto válido;
-* Gerenciamento de cookies de autenticação;
-* Possibilidade de persistência das sessões através do Redis.
+```text
+http://localhost:3000
+```
+
+A porta utilizada depende do valor configurado na variável `PORT`.
+
+## Autenticação e Gerenciamento de Sessões
+
+A API utiliza **JWT (JSON Web Token)** em conjunto com o gerenciamento de sessões.
+
+Entre os recursos implementados estão:
+
+- Access token;
+- Refresh token;
+- Registro e controle das sessões;
+- Controle de sessões revogadas, expiradas ou inexistentes;
+- Validação de inconsistências entre os dados da sessão e do token;
+- Renovação ou reutilização do refresh token enquanto válido;
+- Gerenciamento de cookies de autenticação;
+- Possibilidade de persistência das sessões através do Redis.
 
 ### Login
 
-`POST /login`
+**Endpoint:** `POST /login`
 
-#### Payload
+Exemplo de payload:
 
 ```json
 {
@@ -161,109 +207,99 @@ O sistema possui:
 }
 ```
 
-Após a autenticação, o sistema gera os tokens necessários e registra/controla a sessão correspondente.
+Os valores são ilustrativos.
 
-As informações de autenticação são utilizadas pelo middleware de autenticação para validar a sessão e autorizar as requisições protegidas.
+Após a autenticação, a aplicação gera os tokens necessários e registra ou controla a sessão correspondente. O middleware de autenticação utiliza essas informações para validar a sessão e autorizar as requisições protegidas.
 
-## **Estrutura da API Principal**
+## Arquitetura da API
 
-`API_agrofamilia_pesca/`
+A API segue uma **Arquitetura Monolítica Modular**, organizada em camadas com responsabilidades definidas.
 
-`├── modules/`
+### Controller
 
-`│   ├── usuarios/`
+- Recebe as requisições HTTP;
+- Coordena a resposta ao cliente;
+- Não deve concentrar regras de negócio.
 
-`│   ├── secretarias/`
+### Service
 
-`│   ├── associacoes/`
+- Concentra as regras de negócio;
+- Executa validações;
+- Orquestra as operações da aplicação.
 
-`│   ├── produtos/`
+### Repository
 
-`│   ├── movimentacoes/`
+- Responsável pelo acesso ao banco de dados;
+- Executa consultas através de tabelas e views;
+- Pode utilizar consultas alternativas quando uma view não puder ser utilizada.
 
-`│   └── programas/`
+### BaseScope
 
-`├── shared/`
+- Aplica filtros de escopo diretamente nas consultas;
+- Restringe os dados conforme o contexto de acesso do usuário.
 
-`├── database/`
+### Policy
 
-`├── config/`
+- Define as permissões conforme o nível de acesso.
 
-`├── middleware/`
+### Shared
 
-`└── routes/`
+- Reúne recursos reutilizáveis entre os módulos.
 
-### **Padrão Arquitetural**
+### Módulos Funcionais
 
-A API segue uma **Arquitetura Monolítica Modular**, baseada em camadas bem definidas:
+A API está organizada em módulos, incluindo:
 
-- **Controller**
-  - Entrada e resposta das requisições
-  - Não contém regras de negócio
+- Usuários;
+- Secretarias;
+- Associações;
+- Produtos;
+- Movimentações;
+- Programas.
 
-- **Service**
-  - Regras de negócio
-  - Validações
-  - Orquestração das operações
+## Paginação
 
-- **Repository**
-  - Acesso ao banco
-  - Consultas através de tabelas e views
-  - Fallback para consultas alternativas quando uma view não puder ser utilizada
+As consultas da API possuem suporte à paginação, incluindo validação dos parâmetros e padronização dos resultados.
 
-- **BaseScope**
-  - Aplicação dos filtros de escopo diretamente nas consultas
-  - Restrição dos dados de acordo com o contexto de acesso do usuário
-
-- **Policy**
-  - Autorização por nível de acesso
-
-- **Shared**
-  - Recursos reutilizáveis
-
-## **Paginação**
-
-As consultas da API possuem suporte a paginação, incluindo validação dos parâmetros e padronização dos resultados paginados.
-
-A paginação foi aplicada aos principais módulos de consulta, reduzindo a quantidade de registros carregados e processados em uma única requisição.
+A paginação limita a quantidade de registros retornados em uma consulta e está integrada aos mecanismos compartilhados de consulta e controle de escopo.
 
 Entre os recursos relacionados estão:
 
-* Middleware de validação de paginação;
-* Paginação nas consultas compartilhadas;
-* Integração da paginação com consultas com escopo;
-* Compatibilidade com consultas existentes durante a transição;
-* Padronização do retorno das consultas paginadas.
+- Middleware de validação dos parâmetros de paginação;
+- Paginação nas consultas compartilhadas;
+- Integração com consultas que aplicam escopo;
+- Compatibilidade com consultas existentes;
+- Padronização dos resultados paginados.
 
-## **HATEOAS**
+## HATEOAS
 
-A API utiliza **HATEOAS (Hypermedia as the Engine of Application State)** para adicionar links de navegação às respostas dos recursos.
+A API utiliza **HATEOAS (Hypermedia as the Engine of Application State)** para incluir links de navegação nas respostas dos recursos.
 
 A implementação busca padronizar os links retornados pelos endpoints e facilitar a navegação entre recursos relacionados.
 
-A geração dos links foi integrada aos controllers e utiliza funções auxiliares para conversão e construção dos parâmetros necessários.
+A geração dos links está integrada aos controllers e utiliza funções auxiliares para construir os parâmetros necessários.
 
-## **Controle de Escopo de Dados**
+## Controle de Escopo dos Dados
 
 A API utiliza o `BaseScope` para aplicar restrições de acesso diretamente nas consultas ao banco de dados.
 
-Diferentemente da abordagem anterior, na qual os dados eram consultados e filtrados posteriormente pela aplicação, o `BaseScope` incorpora as condições de escopo à própria consulta.
+Em vez de buscar todos os registros e filtrá-los posteriormente na aplicação, as condições de escopo são incorporadas à própria consulta.
 
-Isso proporciona:
+Essa abordagem proporciona benefícios potenciais, como:
 
 - Redução da quantidade de dados retornados pelo banco;
 - Menor processamento desnecessário na aplicação;
-- Melhor desempenho das consultas;
+- Consultas mais eficientes;
 - Maior isolamento dos dados;
 - Redução do risco de exposição de registros fora do escopo autorizado.
 
-Os endpoints que realizam consultas respeitam o escopo de acesso do usuário, incluindo o escopo **`own`**, que limita a consulta aos dados pertencentes ao próprio usuário quando aplicável.
+Os endpoints de consulta devem respeitar o escopo de acesso do usuário. O escopo `own`, quando aplicável, limita o acesso aos registros pertencentes ao próprio usuário.
 
-A combinação entre `BaseScope` e paginação permite limitar tanto **quais registros podem ser acessados** quanto **quantos registros são retornados por consulta**.
+A combinação entre `BaseScope` e paginação permite controlar tanto **quais registros podem ser acessados** quanto **quantos registros são retornados por consulta**.
 
-## **Controle de Acesso**
+## Controle de Acesso
 
-A API utiliza dois mecanismos complementares:
+A API combina dois mecanismos complementares.
 
 ### RBAC — Role-Based Access Control
 
@@ -278,15 +314,17 @@ Define quais operações cada nível de usuário pode executar.
 
 ### Data Scoping
 
-Além da autorização por nível, as consultas aos dados são restringidas pelo **BaseScope**, garantindo que o usuário acesse somente registros pertencentes ao seu escopo de acesso.
+Além da autorização por nível, as consultas são restringidas pelo `BaseScope`, de acordo com o contexto de acesso do usuário.
 
-O escopo `own`, por exemplo, limita a consulta aos registros pertencentes ao próprio usuário quando aplicável.
+O escopo `own`, por exemplo, limita o acesso aos registros pertencentes ao próprio usuário quando aplicável.
 
-## **Segurança**
+A autorização define quais operações podem ser executadas; o controle de escopo restringe quais dados podem ser acessados.
+
+## Segurança e Observabilidade
 
 A API utiliza múltiplas camadas de proteção, incluindo:
 
-- Autenticação baseada em `JWT`;
+- Autenticação baseada em JWT;
 - Gerenciamento e validação de sessões;
 - Access token e refresh token;
 - Senhas protegidas com `bcryptjs`;
@@ -294,81 +332,97 @@ A API utiliza múltiplas camadas de proteção, incluindo:
 - Escopo de dados aplicado diretamente nas consultas;
 - Rate limiting na rota de login;
 - Validação de IDs antes de operações destrutivas;
-- Logs estruturados para auditoria e diagnóstico;
+- Logs estruturados para diagnóstico e auditoria;
 - Política de segurança documentada em `SECURITY.md`.
 
-A aplicação segue o princípio de **Defense in Depth**, combinando diferentes mecanismos de proteção em suas camadas.
+A aplicação adota o princípio de **Defense in Depth**, combinando mecanismos de proteção em diferentes camadas.
 
-## **Testes Automatizados**
+O logging utiliza Pino e Pino HTTP para registrar eventos relevantes à operação e ao diagnóstico da aplicação.
 
-O projeto utiliza **Jest** e **Supertest** para automatização dos testes.
+## Testes Automatizados
+
+O projeto utiliza **Jest** e **Supertest** para automatizar testes.
 
 Os testes abrangem, entre outros:
 
-* Middleware de autenticação;
-* Autorização;
-* Paginação;
-* Tratamento de erros;
-* Rate limiting do login;
-* Consultas com e sem escopo;
-* Operações de inserção, atualização e exclusão;
-* Login e validações relacionadas à sessão;
-* Operações compartilhadas do `DBUtils`.
+- Middleware de autenticação;
+- Autorização;
+- Paginação;
+- Tratamento de erros;
+- Rate limiting do login;
+- Consultas com e sem escopo;
+- Operações de inserção, atualização e exclusão;
+- Login e validações relacionadas à sessão;
+- Operações compartilhadas do `DBUtils`.
 
-Os testes também são utilizados como parte do fluxo de integração contínua.
+Os testes automatizados também fazem parte do fluxo de integração contínua.
 
-## **Integração Contínua**
+## Integração Contínua — GitHub Actions
 
-O projeto possui um workflow de **CI** configurado através do GitHub Actions.
+O projeto possui um workflow de **CI (Continuous Integration)** configurado através do GitHub Actions.
 
-O processo automatizado permite executar os testes do projeto e identificar regressões durante o desenvolvimento.
+O workflow é executado em eventos de `push` e `pull_request` nas branches `main` e `develop`.
 
-## **Fallback nos Repositories**
+As etapas incluem:
+
+1. Checkout do código;
+2. Configuração do Node.js 22;
+3. Instalação das dependências com `npm ci`;
+4. Verificação de sintaxe do `server.js`;
+5. Execução dos testes com `npm test`.
+
+Como a API está organizada na raiz, os comandos e o cache do npm utilizam os arquivos dessa localização, sem depender do antigo diretório `API_agrofamilia_pesca`.
+
+## Fallback nos Repositories
 
 Os repositories que utilizam views possuem mecanismos de **fallback** para determinadas consultas.
 
 Quando uma view não puder ser utilizada, o repository pode executar uma consulta alternativa, aumentando a resiliência da camada de persistência.
 
-Essa abordagem mantém a separação entre a lógica de negócio e os detalhes de acesso ao banco.
+Essa abordagem mantém a separação entre as regras de negócio e os detalhes de acesso ao banco de dados.
 
-## **Boas Práticas Adotadas**
+## Boas Práticas Adotadas
 
-* Controllers sem regra de negócio
-* Services concentram validações e lógica
-* Repositories não acessam `req` ou `res`
-* Uso de **views SQL para leitura**
-* Fallback para consultas quando necessário
-* Escrita apenas em tabelas base
-* Validação de IDs antes de operações destrutivas
-* Segurança em profundidade (*Defense in Depth*)
-* Logs estruturados com `Pino`
-* Logging HTTP com `Pino HTTP`
-* Rate limiting para autenticação
-* Aplicação de escopo diretamente nas consultas
-* Paginação das consultas
-* Separação entre autorização e regras de negócio
-* Testes automatizados com Jest e Supertest
-* Integração contínua com GitHub Actions
-* Padronização das respostas através de HATEOAS
+- Controllers sem regras de negócio;
+- Services responsáveis pelas validações e pela lógica de negócio;
+- Repositories sem acesso direto a `req` ou `res`;
+- Uso de views SQL para leitura, quando aplicável;
+- Fallback para consultas quando necessário;
+- Escrita nas tabelas-base;
+- Validação de IDs antes de operações destrutivas;
+- Segurança em profundidade (*Defense in Depth*);
+- Logs estruturados com Pino;
+- Logging HTTP com Pino HTTP;
+- Rate limiting para autenticação;
+- Aplicação de escopo diretamente nas consultas;
+- Paginação das consultas;
+- Separação entre autorização e regras de negócio;
+- Testes automatizados com Jest e Supertest;
+- Integração contínua com GitHub Actions;
+- Padronização das respostas através de HATEOAS.
 
-## **Documentação**
+## Documentação
 
-* **Documento Acadêmico Completo**: disponível em `docs/Documentação-Agro-família-Pesca.md`
-* **Manual Técnico Detalhado**: `docs/Manual-Tecnico.md`
-* Este README: visão geral e quick start
+- **Documento acadêmico completo:** `docs/Documentação-Agro-família-Pesca.md`
+- **Manual técnico detalhado:** `docs/Manual-Tecnico.md`
+- **Política de segurança:** `SECURITY.md`
+- **README:** visão geral do sistema e instruções de início rápido.
 
-## **Créditos**
+Consulte os documentos disponíveis no repositório para obter informações detalhadas sobre endpoints, métodos HTTP, payloads, respostas, permissões e configurações.
 
-Projeto desenvolvido pelo **Grupo B – IFMA**
+## Créditos
 
-**Autor / Mantenedor:**  
- **Renã Cantanhede**
+Projeto acadêmico desenvolvido pelo **Grupo B — IFMA**.
 
-* GitHub: https://github.com/rn-cantanhede
-* LinkedIn: https://www.linkedin.com/in/rn-cantanhede
+**Autor / mantenedor:** Renã Cantanhede
 
-## **Observação Final**
+- GitHub: https://github.com/rn-cantanhede
+- LinkedIn: https://www.linkedin.com/in/rn-cantanhede
 
-Este projeto foi desenvolvido com **finalidade acadêmica**, mas segue padrões profissionais de mercado, podendo servir como base para sistemas institucionais e governamentais reais.
+## Observação Final
 
-A versão atual representa uma evolução significativa da API, especialmente em **paginação, testes automatizados, gerenciamento de sessões, controle de escopo, HATEOAS, resiliência da camada de persistência e integração contínua**, mantendo a arquitetura modular como base para futuras evoluções.
+O Agro Família Pesca foi desenvolvido com finalidade acadêmica e utiliza práticas de organização, segurança, testes e manutenção aplicadas ao desenvolvimento de APIs.
+
+O projeto pode servir como base para futuras evoluções, mas sua utilização em ambientes institucionais reais exige avaliação, configuração, testes e validação adicionais.
+
+A versão atual reúne recursos de paginação, testes automatizados, gerenciamento de sessões, controle de escopo, HATEOAS, resiliência da camada de persistência, logging estruturado e integração contínua.
