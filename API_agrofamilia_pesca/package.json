@@ -1,6 +1,6 @@
 {
   "name": "api_agrofamilia_pesca",
-  "version": "V0.8.1-alpha",
+  "version": "V0.8.2-alpha",
   "main": "server.js",
   "scripts": {
     "test": "jest"
