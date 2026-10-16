@@ -25,16 +25,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: API_agrofamilia_pesca/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Instalar dependências
-        working-directory: API_agrofamilia_pesca
         run: npm ci
 
       - name: Verificar sintaxe
-        working-directory: API_agrofamilia_pesca
         run: node --check server.js
 
       - name: Executar testes
-        working-directory: API_agrofamilia_pesca
         run: npm test

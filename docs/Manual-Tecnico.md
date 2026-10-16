@@ -1,560 +1,472 @@
 # Agro Família Pesca
+## Manual Técnico — Sistema de Gerenciamento da Agricultura Familiar e Pesca Artesanal
 
-## Sistema de Gerenciamento da Agricultura Familiar e Pesca Artesanal
+## 1. Introdução
 
-## **1\. Introdução**
+O Agro Família Pesca é uma aplicação backend desenvolvida em Node.js, estruturada como uma API RESTful modular para gerenciar dados relacionados à agricultura familiar e à pesca artesanal. O sistema foi concebido para apoiar atividades administrativas de Secretarias Municipais e Associações, organizando informações institucionais, cadastrais e produtivas.
 
-O sistema Agro Família Pesca é uma aplicação backend desenvolvida em Node.js, estruturada como uma API RESTful segura e modular, voltada para o gerenciamento de dados relacionados à agricultura familiar e à pesca artesanal. O sistema foi concebido para atender às necessidades administrativas de Secretarias Municipais e Associações, permitindo o controle organizado de informações institucionais, produtivas e cadastrais.
+Este manual apresenta a visão técnica da aplicação, sua arquitetura, configuração, mecanismos de segurança, persistência, testes e principais rotas documentadas. Deve ser mantido em conjunto com o código-fonte: detalhes de implementação e payloads podem mudar entre versões.
 
-Este manual técnico tem como objetivo documentar, de forma detalhada, os aspectos técnicos do sistema, servindo como referência para desenvolvedores, administradores de sistema e para fins de avaliação acadêmica no âmbito do IFMA.
+## 2. Requisitos do sistema
 
-## **2\. Requisitos do Sistema**
+### 2.1 Software
 
-Para a correta execução e manutenção do sistema, são necessários os seguintes requisitos:
+- Node.js 22, versão utilizada no fluxo atual de integração contínua.
+- npm, para instalação das dependências e execução dos scripts do projeto.
+- MySQL, como banco de dados relacional.
+- Redis Server somente quando a integração de sessões e/ou o armazenamento Redis do rate limiter estiver habilitado.
+- Insomnia, Postman ou ferramenta equivalente para testes manuais HTTP.
+- Jest e Supertest para execução dos testes automatizados.
 
-### **2.1 Requisitos de Software**
+### 2.2 Ambiente
 
-* Node.js versão 14 ou superior
+- Windows, Linux ou macOS.
+- Acesso ao terminal.
+- Permissões para criar e modificar o banco de dados MySQL.
+- Acesso a um servidor Redis quando a configuração Redis estiver habilitada.
 
-* MySQL (ou banco de dados relacional compatível)
+## 3. Instalação e configuração inicial
 
-* Gerenciador de pacotes NPM ou Yarn
+A API principal foi reorganizada para ficar na raiz do repositório. As antigas pastas `API_Simplificada`, `consumo` e os scripts SQL avulsos não devem ser consideradas parte da estrutura atual sem confirmação no repositório.
 
-* Ferramentas de teste de API, como Insomnia ou Postman
-* Jest e Supertest para execução dos testes automatizados do projeto
-* Redis Server somente quando a persistência externa de sessões estiver habilitada
+1. Clone o repositório oficial vigente.
+2. Acesse a raiz do repositório.
+3. Instale as dependências usando o gerenciador indicado pelo projeto.
+4. Configure as variáveis de ambiente necessárias em um arquivo `.env`, de acordo com a configuração esperada pelo código.
+5. Garanta que o MySQL esteja acessível e que as credenciais tenham permissões suficientes para criar e modificar o esquema.
+6. Execute a aplicação usando os scripts definidos no `package.json`.
 
-### **2.2 Requisitos de Ambiente**
+Exemplo de comandos para um projeto npm:
 
-* Sistema operacional Windows, Linux ou macOS
+```bash
+npm ci
+npm start
+```
 
-* Acesso a terminal ou prompt de comando
+Para desenvolvimento, use o script correspondente definido no `package.json` (por exemplo, `npm run dev`, caso exista). Os comandos disponíveis devem ser confirmados no `package.json` da versão em uso.
 
-* Permissões para criação e manipulação de banco de dados MySQL
+**Importante:** não publique o arquivo `.env`, senhas, chaves JWT, segredos de sessão ou credenciais de infraestrutura no controle de versão.
 
-## **3\. Instalação do Sistema**
+## 4. Banco de dados e persistência
 
-Inicialmente, deve-se clonar o repositório oficial do projeto e acessar a pasta da API principal. Em seguida, as dependências do projeto devem ser instaladas utilizando o gerenciador de pacotes escolhido.
+### 4.1 MySQL, migrations e seeds
 
-Após a instalação das dependências, o ambiente estará preparado para a configuração do banco de dados e execução da aplicação.
+A aplicação utiliza MySQL e Knex.js para acesso e gerenciamento do banco. As **migrations** versionam alterações do esquema e os **seeds** permitem inserir dados iniciais controlados. Esse fluxo substitui a necessidade de executar manualmente os antigos scripts SQL avulsos.
 
-## **4\. Configuração do Banco de Dados**
+A execução de migrations e seeds depende da configuração e dos scripts efetivamente presentes no projeto. Antes de executar a aplicação em um ambiente novo, confirme no código como a inicialização do banco é realizada e quais seeds podem ser executados com segurança.
 
-O sistema utiliza um banco de dados relacional MySQL. A configuração da conexão é realizada por meio de variáveis de ambiente, definidas em um arquivo `.env` localizado na raiz da API principal.
+### 4.2 Views e fallback nos repositories
 
-Durante a inicialização da aplicação, a estrutura do banco é gerenciada através de **Knex Migrations**, responsáveis pelo versionamento das alterações do esquema.
+Algumas consultas de leitura utilizam views do banco. Para determinados repositories, existe uma consulta alternativa (*fallback*) para situações em que a view não esteja disponível ou não possa ser utilizada. Operações de escrita continuam seguindo os métodos de persistência definidos pelos repositories e pelo esquema relacional.
 
-Os dados iniciais são gerenciados através de **Knex Seeds**.
+A existência de fallback não elimina a necessidade de manter migrations, estrutura do banco e consultas compatíveis entre si.
 
-As migrations e seeds permitem reproduzir e controlar a evolução do banco de dados sem depender da execução manual de scripts SQL. 
+### 4.3 Redis (opcional, conforme configuração)
 
-As **views** utilizadas pela aplicação são criadas e mantidas de acordo com a estrutura definida para o banco.
+O projeto oferece integração com Redis para armazenamento externo de sessões e também utiliza `rate-limit-redis` para o rate limiting quando configurado para esse backend. A dependência cliente (`redis`) não instala nem executa o servidor Redis.
 
-### **4.1 Persistência de Sessões com Redis (Opcional)**
+A integração de sessões utiliza `connect-redis`. A disponibilidade e o comportamento de fallback dependem da configuração e do código da versão implantada. Configure `REDIS_URL` quando a aplicação estiver preparada para utilizar um servidor Redis e valide a conectividade antes da implantação.
 
-A API possui suporte opcional à utilização do **Redis** para armazenamento externo das sessões.
+Em Windows, Redis pode ser executado por meio de WSL ou Docker; em Linux, pode ser utilizado um serviço Redis compatível; em macOS, pode-se utilizar uma instalação compatível. Em produção, prefira uma instância gerenciada e protegida por controles de rede e credenciais adequados.
 
-Para habilitar essa integração, é necessário disponibilizar um servidor Redis e configurar a variável de ambiente `REDIS_URL`. A dependência `redis` instalada no projeto atua como cliente e não substitui a instalação do servidor Redis.
+## 5. Execução da aplicação
 
-A integração utiliza `connect-redis` para conectar o armazenamento de sessões ao Redis. Quando o Redis não estiver configurado, a aplicação pode continuar utilizando o mecanismo de armazenamento de sessão configurado localmente.
+A aplicação é executada com Node.js. Os comandos de inicialização e desenvolvimento devem corresponder aos scripts declarados no `package.json`.
 
-Em ambientes Windows, o servidor Redis pode ser executado, conforme o ambiente escolhido, através de **WSL**, **Docker** ou uma implementação compatível. Em Linux, pode ser utilizado o servidor Redis nativo; em macOS, uma instalação via Homebrew é uma alternativa.
+Antes de disponibilizar a API, confirme:
 
-## **5\. Execução da Aplicação**
+- variáveis de ambiente e segredos configurados;
+- conectividade com o MySQL;
+- migrations necessárias aplicadas;
+- Redis disponível quando habilitado;
+- permissões de escrita no diretório de logs;
+- configuração de ambiente e cookies compatível com HTTP/HTTPS utilizado.
 
-Após a configuração do ambiente e do banco de dados, o servidor pode ser iniciado em modo de produção ou desenvolvimento. O sistema suporta execução com Node.js padrão ou com nodemon para recarregamento automático durante o desenvolvimento.
+A API disponibiliza recursos HTTP conforme as rotas registradas na aplicação e as regras de autenticação, autorização e escopo.
 
-Ao iniciar, a API ficará disponível para consumo via HTTP, respeitando as rotas e regras de segurança configuradas.
+## 6. Estrutura do projeto
 
-## **6\. Estrutura de Pastas**
+A aplicação está organizada em módulos de domínio e componentes compartilhados. A estrutura abaixo descreve as responsabilidades gerais, não substituindo a conferência da árvore real do repositório:
 
-A API principal segue uma estrutura modular organizada da seguinte forma:
+- `modules/`: módulos de domínio, incluindo usuários, secretarias, associações, associados, produtos, programas e movimentações, conforme presentes na versão atual.
+- `shared/`: componentes reutilizáveis, como classes base, utilitários, validações e políticas compartilhadas.
+- `database/`: configuração e componentes relacionados à persistência, migrations e seeds.
+- `config/`: configurações globais da aplicação.
+- arquivos de inicialização e configuração na raiz: entrada do servidor, manifesto npm e arquivos relacionados à execução e à integração contínua.
 
-* A pasta `modules` contém os módulos de domínio do sistema, como usuários, secretarias, associações, produtos e movimentações.
+A estrutura modular busca manter responsabilidades coesas e reduzir o acoplamento entre os componentes. Para encontrar um arquivo específico, consulte a árvore do repositório da versão em uso.
 
-* A pasta `shared` concentra recursos reutilizáveis, como classes base, utilitários, validações e políticas de acesso.
+## 7. Arquitetura e responsabilidades
 
-* A pasta `database` contém arquivos relacionados à conexão com o banco de dados.
+O Agro Família Pesca adota uma arquitetura monolítica modular com separação em camadas (*Layered Architecture*).
 
-* A pasta `config` armazena configurações globais da aplicação.
+- **Rotas e middlewares:** definem os endpoints e aplicam os controles transversais necessários.
+- **Controllers:** recebem requisições HTTP, coordenam o fluxo da requisição e constroem as respostas.
+- **Services:** concentram regras de negócio, validações e orquestração das operações.
+- **Repositories:** encapsulam consultas e operações de persistência por meio do Knex.
+- **Policies:** expressam regras de autorização baseadas no nível de acesso.
+- **BaseScope:** aplica filtros de escopo diretamente às consultas ao banco de dados, evitando consultar um conjunto amplo de registros para filtrá-lo somente depois.
+- **Paginação:** middleware valida parâmetros de paginação, que são processados em conjunto com a camada de persistência quando o endpoint oferece esse recurso.
+- **HATEOAS:** respostas compatíveis podem incluir links de navegação relacionados aos recursos retornados, gerados de forma padronizada.
+- **DBUtils:** centraliza operações de banco reutilizadas pelos repositories, conforme a implementação atual.
+- **Tratamento de erros:** middleware centralizado padroniza o tratamento de erros da aplicação.
 
-Essa organização promove alta coesão e baixo acoplamento entre os componentes.
+O fluxo esperado separa o tratamento HTTP das regras de negócio e do acesso a dados. A responsabilidade exata de cada módulo deve ser verificada no código quando houver refatorações.
 
-## **7\. Arquitetura e Padrão de Desenvolvimento**
+## 8. Autenticação e segurança
 
-O sistema adota uma arquitetura monolítica modular baseada no padrão Layered Architecture. As camadas são bem definidas:
+### 8.1 JWT e sessões
 
-* **Controllers:** responsáveis pelo fluxo HTTP, recebimento das requisições e construção das respostas.
+A autenticação utiliza JWT e gerenciamento de sessões no servidor. O fluxo contempla access token e refresh token, além de registro e validação das sessões para permitir verificar sua existência, validade ou revogação. Dessa forma, a autorização não depende exclusivamente da data de expiração do token.
 
-* **Services**: concentram as regras de negócio, validações e orquestração das operações.
+O sistema também trata cookies de sessão de acordo com o ambiente de execução. Os atributos de cookies e a forma de transmissão dos tokens devem ser conferidos na configuração atual antes da implantação.
 
-* **Repositories:** encapsulam o acesso ao banco de dados e as consultas realizadas através do Knex.
+**Validade dos tokens:** a documentação anterior informava validade de sete dias para o token de acesso. Confirme o valor nos pontos de geração e validação do JWT antes de usar esse prazo como garantia operacional. A validade e as regras de reutilização do refresh token também devem corresponder à implementação da versão implantada.
 
-* **Policies**: implementam as regras de autorização baseadas no nível de acesso do usuário
+### 8.2 Senhas
 
-* **Services**: concentram as regras de negócio, validações e orquestração das operações.
+A aplicação utiliza bcrypt para armazenar senhas em formato de hash, com salt. A documentação legada descreve uma migração automática de senhas em texto simples no momento do login: após uma autenticação legada bem-sucedida, a senha seria substituída por um hash bcrypt.
 
-* **BaseScope**: Responsável pela aplicação dos filtros de escopo diretamente nas consultas ao banco de dados. O **BaseScope** substitui a abordagem anterior em que os dados eram consultados e filtrados posteriormente pelo **BaseService**. Essa mudança reduz o volume de dados retornados e processados pela aplicação.
+Esse comportamento é sensível do ponto de vista de segurança e deve ser confirmado no código atual antes de ser considerado vigente. O objetivo recomendado é não armazenar senhas em texto simples e migrar credenciais legadas de maneira controlada, removendo a compatibilidade temporária assim que possível.
 
-* **Paginação**: As consultas que retornam conjuntos de registros utilizam mecanismos de paginação validados por middleware e suportados pela camada de persistência. A paginação também pode ser combinada com o controle de escopo.
+### 8.3 Autorização e escopo de dados
 
-* **HATEOAS**: As respostas da API podem incluir links de navegação relacionados aos recursos retornados, seguindo uma padronização centralizada nos controllers e utilitários responsáveis pela geração desses links.
+O controle de acesso utiliza RBAC (*Role-Based Access Control*) e políticas de autorização. Além de decidir quais operações são permitidas, a aplicação aplica escopo aos dados acessíveis por cada usuário.
 
-* **Fallback nos Repositories**: Determinados repositories possuem consultas alternativas para operações originalmente baseadas em views. O fallback é utilizado quando uma view não estiver disponível ou não puder ser utilizada.
+Os quatro níveis documentados são:
 
-Esse padrão garante clareza, manutenibilidade e segurança no desenvolvimento.
+1. Administrador
+2. Secretaria
+3. Associação
+4. Usuário
 
-## **8\. Autenticação e Segurança**
+Os níveis definem permissões de operação. O escopo institucional restringe os registros que podem ser consultados ou alterados conforme o vínculo do usuário com uma Secretaria ou Associação. Quando aplicável, o escopo `own` restringe a operação aos registros do próprio usuário.
 
-O sistema utiliza autenticação baseada em **JWT (JSON Web Token)** associada ao gerenciamento persistente de sessões. Os tokens de acesso possuem validade de sete dias e carregam informações essenciais para autorização, como nível de acesso e vínculo institucional.
+A validação de autorização e a aplicação do escopo são mecanismos complementares: ter permissão para acessar um endpoint não deve permitir acessar dados de outro contexto institucional.
 
-A autenticação também utiliza **access token** e **refresh token**, com registro das sessões no banco de dados. As sessões podem ser verificadas quanto à existência, validade e revogação, permitindo invalidar o acesso mesmo quando o token ainda estiver dentro de sua validade original.
+### 8.4 Rate limiting
 
-O fluxo de autenticação também contempla o gerenciamento dos cookies de sessão conforme o ambiente de execução.
+O endpoint de login utiliza `express-rate-limit` para limitar tentativas de autenticação em um intervalo definido. O projeto inclui `rate-limit-redis` para permitir que o armazenamento dos limites seja feito em Redis quando configurado.
 
-As senhas são armazenadas de forma criptografada utilizando bcrypt, com uso de salt para aumentar a segurança.
+O rate limiting reduz a exposição a tentativas automatizadas e ataques de força bruta. Os limites concretos, a janela temporal e o comportamento quando o Redis está indisponível devem ser consultados na configuração vigente.
 
-### **8.1 Tratamento de Senhas em Texto (Legacy Passwords)**
+### 8.5 Logs e observabilidade
 
-O sistema oferece compatibilidade temporária com usuários cujas senhas foram armazenadas em texto simples em versões anteriores.
+A aplicação utiliza Pino e Pino HTTP para produzir logs estruturados, auxiliando no diagnóstico, monitoramento e investigação de eventos.
 
-Durante o login, caso a credencial legada seja validada com sucesso, a senha é imediatamente convertida para um **hash bcrypt** e atualizada no banco.
+Os arquivos documentados na configuração atual incluem:
 
-Essa estratégia permite realizar uma migração gradual das credenciais legadas, reduzindo a exposição associada ao armazenamento em texto simples sem exigir uma migração manual de todos os usuários.
+- `app.log`: registros gerais da aplicação; avisos de segurança também podem ser registrados aqui.
+- `error.log`: registros de erros.
+- `security.log`: registros específicos de eventos e avisos de segurança.
 
-No processo de login, o sistema recupera as credenciais do usuário e verifica se o valor armazenado no campo de senha está no formato de hash **bcrypt**. Essa verificação é feita dinamicamente durante a autenticação.
+Os arquivos de log devem permanecer fora do controle de versão. Não registre senhas, tokens completos, segredos de sessão ou outros dados sensíveis. A rotação diária de arquivos não deve ser considerada implementada até que a configuração correspondente seja adicionada e verificada.
 
-Caso a senha **não esteja criptografada**, o sistema valida o acesso por comparação direta entre a senha informada e o valor armazenado. Após a validação bem-sucedida, **a senha é automaticamente convertida** para o formato **bcrypt** e atualizada no banco de dados, eliminando a necessidade de intervenção manual.
+### 8.6 Camadas de proteção
 
-Se a senha já estiver criptografada, a autenticação é realizada normalmente utilizando o mecanismo de comparação segura do **bcrypt**. Em ambos os cenários, o sistema mantém o mesmo fluxo de geração de token **JWT** e controle de acesso por nível e escopo.
+Os mecanismos de segurança documentados incluem:
 
-**Essa abordagem garante:**
+- autenticação por JWT e verificação de sessão;
+- hash de senhas com bcrypt;
+- autorização por RBAC e Policies;
+- restrição de acesso a dados por BaseScope e escopo `own`;
+- limitação de tentativas de login;
+- tratamento centralizado de erros;
+- logs estruturados para diagnóstico e eventos de segurança;
+- testes automatizados dos componentes críticos.
 
-* **Continuidade** do funcionamento do sistema;  
-* **Migração automática** para padrões modernos de segurança;  
-* **Redução de riscos** associados ao armazenamento de senhas em texto simples;  
-* **Facilidade de manutenção** e evolução do sistema.
+Essas medidas precisam ser avaliadas em conjunto. A presença de uma camada não substitui a validação das demais.
 
-### **8.2 Rate Limiting**
+## 9. Testes automatizados e integração contínua
 
-A rota de login utiliza **express-rate-limit** para limitar a quantidade de tentativas de autenticação em determinado intervalo.
+O projeto utiliza Jest para testes automatizados e Supertest para testes HTTP. A cobertura descrita no projeto inclui componentes como:
 
-O mecanismo reduz a exposição da API a tentativas automatizadas de autenticação e ataques de força bruta.
+- middlewares de autenticação e autorização;
+- validação de paginação;
+- tratamento centralizado de erros;
+- rate limiter de login;
+- operações compartilhadas de DBUtils;
+- consultas com e sem escopo;
+- operações de inserção, atualização e exclusão;
+- fluxo de autenticação relacionado ao banco de dados.
 
-O rate limiter é aplicado especificamente ao processo de login, permitindo um controle mais rigoroso sobre operações de autenticação.
+A cobertura efetiva deve ser verificada nos arquivos de teste existentes. A lista acima descreve áreas testadas/documentadas e não garante que todos os cenários de cada componente estejam cobertos.
 
-### **8.3 Logs Estruturados**
+### 9.1 Executar os testes
 
-A aplicação utiliza **Pino** e **Pino HTTP** para geração de logs estruturados.
+Na raiz do repositório, execute:
 
-O sistema permite registrar informações sobre eventos e requisições da API de maneira padronizada, facilitando:
+```bash
+npm test
+```
 
-* Diagnóstico de problemas;  
-* Monitoramento;  
-* Análise de comportamento da aplicação;  
-* Auditoria;  
-* Investigação de eventos de segurança.
+O comando pressupõe que o script `test` esteja configurado no `package.json`. Consulte esse arquivo se o comando ou o ambiente de teste tiver sido alterado.
 
-Os arquivos de log são mantidos fora do controle de versão através do **.gitignore**.
+### 9.2 Integração contínua
 
-### **8.4 Camadas de Segurança**
+O workflow de CI executa verificações automatizadas em eventos de push e pull request para as branches configuradas no arquivo de workflow. A configuração documentada utiliza Ubuntu e Node.js 22, instala dependências com npm, verifica a sintaxe do arquivo de entrada e executa os testes.
 
-A API utiliza múltiplos mecanismos complementares:
+Como a API foi movida para a raiz do repositório, os comandos e caminhos do workflow devem ser relativos à raiz atual; referências antigas a `API_agrofamilia_pesca/` precisam ser removidas se ainda estiverem no arquivo de CI.
 
-* Autenticação:  
-  *    JWT  
-  *    bcrypt  
-      
-* Autorização:  
-  *    RBAC  
-  *    Policies
+## 10. Controle de acesso e boas práticas de consulta
 
+O **BaseScope** aplica filtros de escopo diretamente às consultas de persistência. Essa abordagem substitui a estratégia anterior de buscar registros sem restrição e filtrar os resultados posteriormente no BaseService.
 
-* Controle de dados:  
-  *    BaseScope  
-  *    Escopo \`own\`
+Quando aplicável, o escopo deve ser aplicado não apenas em consultas de leitura, mas também nas operações de atualização e exclusão, para impedir que o usuário altere registros fora do seu contexto autorizado.
 
+A integração entre escopo e paginação deve preservar os filtros de autorização tanto na consulta dos registros quanto na contagem utilizada para gerar metadados de paginação.
 
-* Proteção contra abuso:  
-  *    Rate Limiting
+Benefícios pretendidos:
 
+- menor exposição de dados;
+- redução do volume de registros transferidos e processados;
+- padronização das regras de acesso;
+- melhor previsibilidade das consultas;
+- menor risco de acesso cruzado entre Secretarias, Associações e usuários.
 
-* Observabilidade:  
-  *    Logs estruturados  
-  *    Pino  
-  *    Pino HTTP
+## 11. Manutenção e evolução
 
-### **8.5 Testes Automatizados e Integração Contínua**
+A arquitetura modular permite evoluir o sistema de forma incremental. A separação entre controllers, services, repositories e componentes compartilhados facilita manutenção corretiva e evolutiva.
 
-O projeto utiliza **Jest** para testes automatizados e **Supertest** para testes de integração HTTP.
+Ao implementar mudanças:
 
-Entre os componentes testados estão:
+1. verifique a regra de negócio e o escopo de acesso;
+2. mantenha as responsabilidades de cada camada;
+3. atualize migrations quando houver alteração de esquema;
+4. adicione ou ajuste testes automatizados;
+5. atualize a documentação técnica e os payloads afetados;
+6. execute os testes localmente e aguarde o resultado da CI;
+7. revise logs para evitar exposição de informações sensíveis.
 
-* Middleware de autenticação;
-* Middleware de autorização;
-* Validação de paginação;
-* Tratamento centralizado de erros;
-* Rate limiter de login;
-* Operações compartilhadas do DBUtils;
-* Consultas com e sem escopo;
-* Operações de inserção, atualização e exclusão;
-* Fluxo de autenticação no banco de dados.
+## 12. Rotas da API e payloads
 
-O projeto também possui um workflow de **CI** para execução automatizada das verificações e testes durante o desenvolvimento.
+Esta seção registra exemplos de rotas presentes na documentação de referência. Ela não substitui o código das rotas nem garante que todos os endpoints estejam listados. Antes de usar os exemplos em produção, valide métodos, permissões, nomes de campos, códigos HTTP e formatos de resposta na versão atual.
 
-## **9\. Controle de Acesso e Escopo**
+As requisições e respostas usam JSON quando aplicável. Rotas protegidas exigem autenticação conforme os middlewares configurados. Consultas de listagem podem oferecer paginação e respostas HATEOAS conforme o endpoint.
 
-O sistema utiliza dois mecanismos complementares:
+### 12.1 Autenticação
 
-### **9.1 RBAC**
+#### Login
 
-O controle de acesso é baseado no modelo RBAC (Role-Based Access Control), com quatro níveis hierárquicos:
+**Método e rota:** `POST /login`
 
-* Administrador
+Payload documentado:
 
-* Secretaria
+```json
+{
+  "LOGIN": "novo_login",
+  "SENHA": "nova_senha"
+}
+```
 
-* Associação
+A rota valida as credenciais e, em caso de sucesso, inicia o fluxo de autenticação e emite os tokens previstos pela implementação. O formato exato da resposta e o mecanismo de transporte dos tokens devem ser confirmados no controller atual.
 
-* Usuário
+A resposta legada documentada era:
 
-O nível define quais operações podem ser executadas pelo usuário.
+```json
+{
+  "Message": "Login realizado",
+  "APIkey": "<token_jwt>"
+}
+```
 
-### **9.2 Data Scoping**
+Resposta de erro legada documentada:
 
-Além do nível, o sistema aplica escopo de dados, garantindo que cada usuário visualize apenas informações compatíveis com sua Secretaria ou Associação. Esse controle é implementado na camada de serviço por meio de um mecanismo de escopo centralizado.
+```json
+{
+  "Error": "Login invalido"
+}
+```
 
-## **10\. Padrões e Boas Práticas**
+Esses exemplos refletem o documento de referência e devem ser comparados com as respostas atuais antes de serem tratados como contrato definitivo.
 
-Além da autorização, a API aplica restrições sobre os próprios dados que podem ser consultados.
+### 12.2 Módulo Usuários
 
-Esse mecanismo é implementado através do **BaseScope**, que adiciona os filtros de escopo diretamente às consultas realizadas no banco.
+Responsável pelo gerenciamento de usuários, autenticação e administração de perfis.
 
-Dessa forma, a aplicação não realiza uma consulta ampla para posteriormente filtrar os resultados. O banco já recebe a consulta com as restrições correspondentes ao contexto do usuário.
+| Operação | Método e rota documentados | Observação |
+|---|---|---|
+| Consultar usuários | `GET /usuarios` | O escopo deve ser aplicado conforme o contexto do usuário. |
+| Buscar por ID ou nome | `GET /usuarios/{value}` | Confirmar formato aceito pelo parâmetro. |
+| Buscar por nível | `GET /usuarios/nivel/{nivel}` | Filtra pelo nível de acesso. |
+| Buscar por secretaria | `GET /usuarios/secretaria/{secretaria}` | Filtra pelo vínculo institucional. |
+| Buscar por login | `GET /usuarios/login/{login}` | Confirmar as permissões atuais. |
+| Criar usuário | `POST /usuarios/new` | Payload abaixo. |
+| Atualizar usuário | `PUT /usuarios/update/{id}` | Payload abaixo. |
+| Atualizar login | `PUT /usuarios/update/login/{id}` | Payload abaixo. |
+| Excluir usuário | `DELETE /usuarios/delete/{id}` | A exclusão deve respeitar autorização e escopo. |
 
-Os endpoints que realizam consultas utilizam esse mecanismo de forma transversal.
+Exemplo de criação:
 
-Quando aplicável, o escopo **own** limita a consulta aos dados pertencentes ao próprio usuário.
+```json
+{
+  "ID_PESSOA": 1,
+  "ID_SECRETARIA": 2,
+  "ID_ASSOCIACAO": "1",
+  "NIVEL": 1,
+  "LOGIN": "usuario_admin",
+  "SENHA": "senha123"
+}
+```
 
-Essa abordagem proporciona:
+Exemplo de atualização:
 
-* Maior segurança;
+```json
+{
+  "ID_PESSOA": 1,
+  "ID_SECRETARIA": 2,
+  "ID_ASSOCIACAO": "",
+  "NIVEL": 2
+}
+```
 
-* Menor quantidade de dados retornados;
+Exemplo de atualização de login:
 
-* Menor processamento na aplicação;
+```json
+{
+  "LOGIN": "admin",
+  "SENHA": "admin"
+}
+```
 
-* Melhor desempenho das consultas;
+Os valores são exemplos ilustrativos, não credenciais recomendadas para ambientes reais.
 
-* Padronização da regra de acesso aos dados.
+### 12.3 Módulo Pessoas
 
-## **11\. Manutenção e Evolução**
+Responsável pelo cadastro de pessoas físicas usadas como base para usuários e associados.
 
-A arquitetura adotada permite evolução gradual do sistema, possibilitando a adição de novos módulos, integração com sistemas externos, geração de relatórios e dashboards analíticos, sem impacto significativo na base existente.
+**Método e rota documentados:** `POST /pessoas`
 
-A separação entre camadas e o uso de abstrações facilitam a manutenção corretiva e evolutiva do projeto. A introdução de paginação, HATEOAS, testes automatizados, CI, gerenciamento persistente de sessões e fallback nos repositories amplia essa capacidade de evolução sem concentrar responsabilidades em uma única camada.
+```json
+{
+  "NOME": "João da Silva",
+  "CPF": "12345678900",
+  "DATA_NASCIMENTO": "1985-06-15",
+  "GENERO": "M"
+}
+```
 
-## **12\. Rotas da API e Payloads**
+O payload deve ser validado conforme as regras de negócio e os campos obrigatórios da implementação atual.
 
-Esta seção descreve as principais rotas expostas pela API Agro Família Pesca, bem como os formatos de payload utilizados nas requisições e respostas. Todas as rotas seguem os princípios REST e utilizam JSON como formato de comunicação.
+### 12.4 Módulo Secretarias
 
-As consultas que retornam conjuntos de registros podem utilizar **paginação**, aplicada por middleware e processada pela camada de persistência. Quando aplicável, a paginação é combinada com o controle de escopo para manter as restrições de acesso do usuário.
+Gerencia os órgãos governamentais vinculados ao sistema.
 
-As respostas também podem utilizar **HATEOAS**, disponibilizando links de navegação relacionados aos recursos retornados. A geração desses links é padronizada pela API e integrada aos controllers dos módulos.
+**Método e rota documentados:** `POST /secretarias`
 
-### **12.1 Autenticação**
+```json
+{
+  "NOME": "Secretaria de Agricultura",
+  "CIDADE": "Tutóia",
+  "ESTADO": "MA",
+  "ENDERECO": "Av. Principal, 500"
+}
+```
 
-A autenticação do sistema Agro Família Pesca é realizada exclusivamente por meio de **login com credenciais**, retornando um **JWT (JSON Web Token)** válido.
+### 12.5 Módulo Associações
 
-#### **12.1.1 Login do Usuário**
+Gerencia associações vinculadas às Secretarias.
 
-Responsável por autenticar o usuário no sistema e gerar o token JWT que será utilizado nas demais requisições protegidas.
+**Método e rota documentados:** `POST /associacoes`
 
-**Rota:**  
- `POST /login`
+```json
+{
+  "NOME": "Colônia de Pescadores Z-15",
+  "ENDERECO": "Rua do Porto, SN",
+  "ID_SECRETARIA": 1,
+  "ID_CATEGORIA": 2
+}
+```
 
-**Payload da Requisição**  
-`{`  
-  `"LOGIN": "novo_login",`  
-  `"SENHA": "nova_senha"`  
-`}`
-
-**Comportamento**
-
-* O sistema valida o login e a senha informados.
-
-* A senha é comparada com o hash armazenado no banco de dados utilizando `bcrypt`.
-
-* Em caso de sucesso, é gerado um **token JWT válido por 7 dias**.
-
-**Resposta (Sucesso)**  
-`{`  
-  `"Message": "Login realizado",`  
-  `"APIkey": "<token_jwt>"`  
-`}`
-
-**Resposta (Erro)**  
-`{`  
-  `"Error": "Login invalido"`  
-`}`
-
-**Observações Importantes**
-
-* O token retornado deve ser enviado nas requisições subsequentes.
-
-* O token contém informações essenciais para autorização:
-
-  * ID da pessoa
-
-  * Login
-
-  * Nível de acesso
-
-  * Secretaria vinculada
-
-* O Controller é responsável pelo fluxo HTTP. A autorização é determinada pelas **Policies**, enquanto o controle de escopo dos dados é aplicado pelo **BaseScope** durante a construção das consultas.
-
-* A sessão de autenticação é controlada pelo servidor e pode ser revogada. O refresh token pode ser reutilizado enquanto permanecer válido de acordo com as regras do fluxo de autenticação.
-
-* Quando configurado, o armazenamento de sessões pode utilizar Redis através de `connect-redis`.
-
-### **12.2 Módulo Usuários**
-
-Responsável pelo gerenciamento de usuários do sistema, incluindo autenticação, controle de acesso e administração de perfis.
-
-Consultar todos os usuários
-
-**Rota:**  
- GET `/usuarios`
-
-**Permissões:**  
- Admin, Secretaria, Associação, Usuário (com escopo aplicado)
-
-**Buscar usuário por ID ou Nome**
-
-**Rota:**  
- GET `/usuarios/{value}`
-
-**Descrição:**  
- Permite buscar um usuário pelo ID ou pelo nome.
-
-**Buscar usuários por nível**
-
-**Rota:**  
- GET `/usuarios/nivel/{nivel}`
-
-**Descrição:**  
- Retorna usuários filtrados pelo nível de acesso.
-
-**Buscar usuários por secretaria**
-
-**Rota:**  
- GET `/usuarios/secretaria/{secretaria}`
-
-**Buscar usuário por login**
-
-**Rota:**  
- GET `/usuarios/login/{login}`
-
-**Criar novo usuário**
-
-**Rota:**  
- POST `/usuarios/new`
-
-**Payload da Requisição:**
-
-`{`  
-  `"ID_PESSOA": 1,`  
-  `"ID_SECRETARIA": 2,`  
-  `"ID_ASSOCIACAO": "1",`  
-  `"NIVEL": 1,`  
-  `"LOGIN": "usuario_admin",`  
-  `"SENHA": "senha123"`  
-`}`
-
-**Regras:**
-
-* A senha é automaticamente criptografada.
-
-* IDs informados são validados previamente.
-
-**Atualizar dados do usuário**
-
-**Rota:**  
- PUT `/usuarios/update/{id}`
-
-**Payload da Requisição:**
-
-`{`  
-  `"ID_PESSOA": 1,`  
-  `"ID_SECRETARIA": 2,`  
-  `"ID_ASSOCIACAO": "",`  
-  `"NIVEL": 2`  
-`}`
-
-**Atualizar login do usuário**
-
-**Rota:**  
- PUT `/usuarios/update/login/{id}`
-
-**Payload da Requisição:**
-
-`{`  
-  `"LOGIN": "admin",`  
-  `"SENHA": "admin"`  
-`}`
-
-**Remover usuário**
-
-**Rota:**  
- DELETE `/usuarios/delete/{id}`
-
-### **13.3 Módulo Pessoas**
-
-Responsável pelo cadastro de pessoas físicas utilizadas como base para usuários e associados.
-
-**Criar pessoa**
-
-**Rota:**  
- POST `/pessoas`
-
-**Payload da Requisição:**  
-`{`  
-  `"NOME": "João da Silva",`  
-  `"CPF": "12345678900",`  
-  `"DATA_NASCIMENTO": "1985-06-15",`  
-  `"GENERO": "M",`  
-`}`
-
-### **13.4 Módulo Secretarias**
-
-Gerência órgãos governamentais vinculados ao sistema.
-
-**Criar secretaria**
-
-**Rota:**  
- POST `/secretarias`
-
-**Payload da Requisição:**
-
-`{`  
-  `"NOME": "Secretaria de Agricultura",`  
-  `"CIDADE": "Tutóia",`  
-  `"ESTADO": "MA",`  
-  `"ENDERECO": "Av. Principal, 500"`  
-`}`
-
-### **13.5 Módulo Associações**
-
-Gerencia associações vinculadas a secretarias.
-
-**Criar associação**
-
-**Rota:**  
- POST `/associacoes`
-
-**Payload da Requisição:**
-
-`{`  
-  `"NOME": "Colônia de Pescadores Z-15",`  
-  `"ENDERECO": "Rua do Porto, SN",`  
-  `"ID_SECRETARIA": 1,`  
-  `"ID_CATEGORIA": 2`  
-`}`
-
-### **13.6 Módulo Associados**
+### 12.6 Módulo Associados
 
 Gerencia o vínculo entre pessoas e associações.
 
-**Criar associado**
+**Método e rota documentados:** `POST /associados`
 
-**Rota:**  
- POST `/associados`
+```json
+{
+  "ID_PESSOA": 10,
+  "ID_ASSOCIACAO": 5,
+  "CAF": "123.456.789",
+  "VALIDADE_CAF": "2027-12-31"
+}
+```
 
-**Payload da Requisição:**
-
-`{`  
-  `"ID_PESSOA": 10,`  
-  `"ID_ASSOCIACAO": 5,`  
-  `"CAF": "123.456.789",`  
-  `"VALIDADE_CAF": "2027-12-31"`  
-`}`
-
-### **13.7 Módulo Programas / Agricultura Familiar**
+### 12.7 Módulo Programas
 
 Responsável pelo cadastro de programas governamentais e beneficiários.
 
-**Criar programa**
+**Método e rota documentados:** `POST /programas`
 
-**Rota:**  
- POST `/programas`
+```json
+{
+  "NOME": "Programa de Apoio à Agricultura Familiar",
+  "DESCRICAO": "Incentivo à produção local",
+  "DATA_INICIO": "2024-01-01T03:00:00.000Z",
+  "DATA_FIM": "2026-12-31T03:00:00.000Z",
+  "ORIGEM_RECURSO": "Governo Estadual",
+  "VLR_REPASSE": "150000.00",
+  "ID_SECRETARIA": 1,
+  "ID_ASSOCIACAO": 3
+}
+```
 
-**Payload da Requisição:**
+### 12.8 Módulo Produtos
 
-{  
-        "NOME": "Programa de Apoio à Agricultura Familiar",  
-        "DESCRICAO": "Incentivo à produção local",  
-        "DATA\_INICIO": "2024-01-01T03:00:00.000Z",  
-        "DATA\_FIM": "2026-12-31T03:00:00.000Z",  
-        "ORIGEM\_RECURSO": "Governo Estadual",  
-        "VLR\_REPASSE": "150000.00",  
-        "ID\_SECRETARIA": 1  
-    }
+Gerencia produtos agrícolas e pesqueiros.
 
-### **13.8 Módulo Produtos**
+**Método e rota documentados:** `POST /produtos`
 
-Gerência produtos agrícolas e pesqueiros.
+```json
+{
+  "NOME": "Tilápia",
+  "ID_TIPO_PRODUTO": "2"
+}
+```
 
-**Criar produto**
+### 12.9 Módulo Movimentações
 
-**Rota:**  
- POST `/produtos`
+Registra movimentações relacionadas à produção dos associados.
 
-**Payload da Requisição:**
+**Método e rota documentados:** `POST /movimentacoes`
 
-`{`  
-  `"NOME": "Tilápia",`  
-  `"ID_TIPO_PRODUTO": "2"`  
-`}`
+```json
+{
+  "ID_LOCAL": 1,
+  "ID_AGRICULTURA_FAMILIAR": 1,
+  "ID_PRODUTO": 1,
+  "QNT_PRODUZIDA": "200",
+  "VLR_UNITARIO": "15.50",
+  "DATA_MOVIMENTACAO": "2025-01-10"
+}
+```
 
-### **13.9 Módulo Movimentações**
+### 12.10 Observações sobre os endpoints
 
-Registra a produção dos associados.
+- Os endpoints e payloads acima foram preservados da documentação fornecida; confirme-os com as rotas e controllers atuais.
+- Os endpoints protegidos exigem autenticação conforme a configuração vigente.
+- A autorização depende do nível de acesso e das Policies.
+- O escopo institucional deve restringir os registros acessíveis.
+- A paginação está disponível nos endpoints que a implementam.
+- As respostas HATEOAS podem incluir links de navegação quando configuradas.
+- Erros são tratados pelo middleware centralizado, conforme a implementação.
+- Não se deve assumir que a lista acima é um inventário completo de rotas.
 
-**Registrar movimentação**
+## 13. Referências internas do projeto
 
-**Rota:**  
- POST `/movimentacoes`
+Consulte os documentos e arquivos existentes no repositório para informações complementares:
 
-**Payload da Requisição:**
+- `docs/Documentação-Agro-família-Pesca.md`: documentação geral do sistema, caso esse caminho permaneça vigente.
+- `docs/Manual-Tecnico.md`: este manual técnico, caso esse caminho permaneça vigente.
+- `SECURITY.md`: orientações de segurança, caso disponível na raiz.
+- `package.json`: scripts npm e dependências.
+- Arquivos de configuração de migrations, seeds, rotas, middlewares e workflow de CI: fonte de verdade para o comportamento executável.
 
-`{`  
-  `"ID_LOCAL": 1,`  
-  `"ID_AGRICULTURA_FAMILIAR":  1,`  
-  `"ID_PRODUTO":  1,`  
-  `"QNT_PRODUZIDA": "200",`  
-  `"VLR_UNITARIO": "15.50",`  
-  `"DATA_MOVIMENTACAO": "2025-01-10"`  
-`}`
+Os nomes e caminhos devem ser ajustados à estrutura real do repositório após a reorganização.
 
-## **14\. Observações Gerais sobre as Rotas**
+## 14. Considerações técnicas finais
 
-* Todas as rotas protegidas exigem autenticação via JWT.
+O Agro Família Pesca reúne uma API modular para gerenciamento de dados relacionados à agricultura familiar e à pesca artesanal. A separação por camadas, o controle de acesso por nível e escopo, o gerenciamento de sessões, a persistência com Knex, os logs estruturados e os testes automatizados compõem a base técnica documentada do projeto.
 
-* O acesso às rotas é controlado por nível de usuário e escopo institucional.
-
-* As respostas seguem o padrão JSON.
-
-* Consultas com grandes conjuntos de registros utilizam paginação quando suportado pelo endpoint.
-
-* As respostas que utilizam HATEOAS podem incluir links de navegação para recursos relacionados.
-
-* Erros são tratados de forma centralizada pelo middleware de erro.
-
-
-## **15\. Considerações Técnicas Finais**
-
-O sistema Agro Família Pesca apresenta uma base técnica sólida, alinhada às boas práticas modernas de desenvolvimento backend. Sua estrutura modular, aliada a um modelo consistente de segurança e controle de acesso, torna o projeto adequado tanto para fins acadêmicos quanto para aplicações institucionais reais.
-
-Este manual técnico consolida as decisões arquiteturais e técnicas adotadas, servindo como referência para continuidade, avaliação e aprimoramento do sistema.
-
+Este manual deve evoluir junto com o código. Sempre que uma rota, payload, regra de segurança, variável de ambiente, migration, integração ou comando de execução mudar, a documentação correspondente deve ser revisada e validada contra a implementação antes de uma nova versão ser publicada.
