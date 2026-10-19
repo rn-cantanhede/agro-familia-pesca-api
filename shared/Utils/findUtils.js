@@ -6,6 +6,10 @@ const Erros = require("../errors/Errors");
  */
 
 function convertString(value) {
+    if (!value) {
+        return value;
+    };
+
     if (value.includes(" ")) {
         const string = value.split(" ");
         const convertedString = string.join("-");

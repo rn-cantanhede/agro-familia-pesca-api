@@ -41,7 +41,13 @@ function Hateoas(value, url, nivel, module, getRoutes) {
 
     if (Array.isArray(getRoutes)) {
         getRoutes.forEach((element) => {
-            get.push(`${url + nivel + "/" + module + "/" + element}`);
+            if (element != undefined && typeof element != "string") {
+                get.push(`${url + nivel + "/" + module + "/" + element}`);
+            } else {
+                if (!element.includes("undefined")) {
+                    get.push(`${url + nivel + "/" + module + "/" + element}`);
+                };
+            };
         });
 
         hateoas.GET = get;
