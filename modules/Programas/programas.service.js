@@ -1,5 +1,5 @@
 const Erros = require("../../shared/errors/Errors");
-const { findByIdName, findByScope } = require("../../shared/Utils/findUtils");
+const { findByIdName, findByScope, find } = require("../../shared/Utils/findUtils");
 const validationsUtils = require("../../shared/Utils/validationsUtils");
 const ProgramasRepository = require("./programas.repository");
 const baseScope = require("../../shared/base/baseScope");
