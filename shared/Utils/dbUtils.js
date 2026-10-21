@@ -17,7 +17,7 @@ async function findAll(table, page, limit) {
     if (!result.length) {
         return undefined;
     };
-    
+
     return { result, total };
 };
 
@@ -49,14 +49,14 @@ async function findByInterval(field, inicio, fim, table, page, limit) {
  * esteja dentro do intervalo informado com escopo e paginação.
  */
 async function findByIntervalWithScope(
-    sessionID, 
-    sessionField, 
-    field, 
-    inicio, 
-    fim, 
-    multiple = false, 
-    table, 
-    page, 
+    sessionID,
+    sessionField,
+    field,
+    inicio,
+    fim,
+    multiple = false,
+    table,
+    page,
     limit
 ) {
     const offset = (page - 1) * limit;
@@ -131,36 +131,42 @@ async function findWithScope(
     limit
 ) {
     const offset = (page - 1) * limit;
-    let query = knex.select("").from(table);
+
+    let query = knex(table);
     let countQuery = knex(table);
 
     if (isNaN(value)) {
         query = query.where(field, "like", `%${value}%`);
+        countQuery = countQuery.where(field, "like", `%${value}%`);
     } else {
         query = query.where(field, value);
+        countQuery = countQuery.where(field, value);
+    };
+
+    // Verifica se a coluna de escopo existe na tabela.
+    const columns = await knex(table).columnInfo();
+
+    if (columns[sessionField]) {
+        query = query.andWhere(sessionField, sessionID);
+        countQuery = countQuery.andWhere(sessionField, sessionID);
+    } else {
+        return undefined;
     };
 
     const result = await query
-        .andWhere(sessionField, sessionID)
         .orderBy(field, "asc")
         .limit(limit)
         .offset(offset);
 
-    if (isNaN(value)) {
-        countQuery = countQuery.where(field, "like", `%${value}%`);
-    } else {
-        countQuery = countQuery.where(field, value);
-    };
-
-    const total = await countQuery
-        .andWhere(sessionField, sessionID)
-        .count("* as count");
+    const [{ count }] = await countQuery.count("* as count");
 
     if (!result.length) {
         return undefined;
     };
 
-    return multiple ? { result, total } : { result: result[0], total };
+    return multiple
+        ? { result, total: Number(count) }
+        : { result: result[0], total: Number(count) };
 };
 
 /**
@@ -169,7 +175,7 @@ async function findWithScope(
  */
 
 async function insertData(value, table) {
-    const result = await knex(table).insert(value);
+    await knex(table).insert(value);
     return value;
 };
 
@@ -179,7 +185,7 @@ async function insertData(value, table) {
  */
 
 async function updateData(id, value, table) {
-    const result = await knex(table).where({ ID: id }).update(value);
+    await knex(table).where({ ID: id }).update(value);
     return value;
 };
 
