@@ -1,355 +1,206 @@
 /**
  * Mock da conexão do Knex.
  *
- * É importante fazer isso antes de importar dbUtils,
- * porque dbUtils importa a conexão quando é carregado.
+ * Precisa ser declarado antes de importar dbUtils,
+ * pois o módulo importa a conexão durante sua inicialização.
  */
-jest.mock("../../../../database/connection", () => {
+jest.mock("../../../../database/connection", () => jest.fn());
 
-    const knex = jest.fn();
-
-    // Mock do knex.select(...)
-    knex.select = jest.fn();
-
-    return knex;
-});
-
-
-/**
- * Importamos o knex mockado.
- */
 const knex = require("../../../../database/connection");
 
-
-/**
- * Importamos SOMENTE a função que queremos testar.
- *
- * As funções:
- *
- * - findWithScope
- *
- * são detalhes internos da implementação.
- */
 const {
     findWithScope
 } = require("../../../../shared/Utils/dbUtils");
 
 
+/**
+ * Cria um mock de query builder do Knex.
+ *
+ * Os métodos de construção da consulta retornam
+ * o próprio builder para permitir o encadeamento.
+ */
+function createQueryBuilder({
+    result = [],
+    count = 0
+} = {}) {
+    const builder = {};
+
+    const mocks = {
+        where: jest.fn(() => builder),
+        andWhere: jest.fn(() => builder),
+        orderBy: jest.fn(() => builder),
+        limit: jest.fn(() => builder),
+        offset: jest.fn().mockResolvedValue(result),
+        count: jest.fn().mockResolvedValue([
+            { count }
+        ])
+    };
+
+    Object.assign(builder, mocks);
+
+    return {
+        builder,
+        mocks
+    };
+}
+
+
+/**
+ * Configura as consultas utilizadas pela função.
+ *
+ * Ordem das chamadas:
+ * 1. knex(table): consulta dos registros.
+ * 2. knex(table): consulta da contagem.
+ * 3. knex(table).columnInfo(): verificação das colunas.
+ */
+function setupKnex({
+    result = [],
+    count = 0,
+    columns = {
+        id: {},
+        name: {},
+        user_id: {}
+    }
+} = {}) {
+    const query = createQueryBuilder({
+        result
+    });
+
+    const countQuery = createQueryBuilder({
+        count
+    });
+
+    const columnInfo = jest.fn()
+        .mockResolvedValue(columns);
+
+    knex
+        .mockReturnValueOnce(query.builder)
+        .mockReturnValueOnce(countQuery.builder)
+        .mockReturnValueOnce({
+            columnInfo
+        });
+
+    return {
+        query,
+        countQuery,
+        columnInfo
+    };
+}
+
+
 describe("findWithScope", () => {
 
     beforeEach(() => {
-
-        /**
-         * Limpa chamadas anteriores dos mocks.
-         */
         jest.clearAllMocks();
-
+        knex.mockReset();
     });
 
 
     /**
      * =========================================================
-     * STRING
+     * BUSCA TEXTUAL
      * =========================================================
      */
 
-    test(
-        "deve realizar busca textual quando value for uma string",
-        async () => {
+    test("deve realizar busca textual utilizando LIKE", async () => {
+        const resultMock = [
+            {
+                id: 1,
+                name: "João",
+                user_id: 10
+            }
+        ];
 
-            /**
-             * Resultado que será devolvido pelo banco.
-             */
-            const resultMock = [
-                {
-                    id: 1,
-                    name: "João"
-                }
-            ];
+        const { query, countQuery } = setupKnex({
+            result: resultMock,
+            count: 1
+        });
 
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "name",
+            "João",
+            false,
+            "users",
+            1,
+            10
+        );
 
-            /**
-             * Mock da última função da cadeia:
-             *
-             * .offset(...)
-             *
-             * Ela precisa retornar uma Promise,
-             * pois o código utiliza await.
-             */
-            const offsetMock = jest.fn()
-                .mockResolvedValue(resultMock);
+        expect(query.mocks.where).toHaveBeenCalledWith(
+            "name",
+            "like",
+            "%João%"
+        );
 
+        expect(countQuery.mocks.where).toHaveBeenCalledWith(
+            "name",
+            "like",
+            "%João%"
+        );
 
-            /**
-             * .limit(...)
-             */
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
+        expect(query.mocks.andWhere).toHaveBeenCalledWith(
+            "user_id",
+            10
+        );
 
+        expect(countQuery.mocks.andWhere).toHaveBeenCalledWith(
+            "user_id",
+            10
+        );
 
-            /**
-             * .orderBy(...)
-             */
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            /**
-             * .andWhere(...)
-             */
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
-
-
-            /**
-             * .where(...)
-             */
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
-
-
-            /**
-             * .from(...)
-             */
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
-
-
-            /**
-             * Montamos a cadeia:
-             *
-             * knex.select("")
-             *     .from(...)
-             *     .where(...)
-             *     .andWhere(...)
-             *     .orderBy(...)
-             *     .limit(...)
-             *     .offset(...)
-             */
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
-
-
-            /**
-             * -------------------------------------------------
-             * MOCK DO COUNT
-             * -------------------------------------------------
-             *
-             * O código também executa:
-             *
-             * knex(table)
-             *     .where(...)
-             *     .andWhere(...)
-             *     .count(...)
-             */
-
-            const countMock = jest.fn()
-                .mockResolvedValue([
-                    { count: 1 }
-                ]);
-
-
-            const countAndWhereMock = jest.fn(() => ({
-                count: countMock
-            }));
-
-
-            const countWhereMock = jest.fn(() => ({
-                andWhere: countAndWhereMock
-            }));
-
-
-            /**
-             * Quando knex("users") for executado,
-             * retorna nossa cadeia de count.
-             */
-            knex.mockReturnValue({
-                where: countWhereMock
-            });
-
-
-            /**
-             * -------------------------------------------------
-             * EXECUÇÃO
-             * -------------------------------------------------
-             */
-
-            await findWithScope(
-                10,             // sessionID
-                "user_id",      // sessionField
-                "name",         // field
-                "João",         // value
-                false,          // multiple
-                "users",        // table
-                1,              // page
-                10              // limit
-            );
-
-
-            /**
-             * -------------------------------------------------
-             * VERIFICAÇÕES
-             * -------------------------------------------------
-             *
-             * Como "João" é uma string, a função deve
-             * utilizar LIKE.
-             */
-
-            expect(whereMock).toHaveBeenCalledWith(
-                "name",
-                "like",
-                "%João%"
-            );
-
-
-            /**
-             * Verifica se o session scope foi aplicado.
-             */
-            expect(andWhereMock).toHaveBeenCalledWith(
-                "user_id",
-                10
-            );
-
-
-            /**
-             * Página 1:
-             *
-             * (1 - 1) * 10 = 0
-             */
-            expect(offsetMock).toHaveBeenCalledWith(0);
-
-        }
-    );
+        expect(response).toEqual({
+            result: resultMock[0],
+            total: 1
+        });
+    });
 
 
     /**
      * =========================================================
-     * NÚMERO
+     * BUSCA NUMÉRICA
      * =========================================================
      */
 
-    test(
-        "deve realizar busca numérica quando value for um número",
-        async () => {
+    test("deve realizar busca por igualdade quando value for numérico", async () => {
+        const resultMock = [
+            {
+                id: 25,
+                user_id: 10
+            }
+        ];
 
-            const resultMock = [
-                {
-                    id: 25,
-                    name: "João"
-                }
-            ];
+        const { query } = setupKnex({
+            result: resultMock,
+            count: 1
+        });
 
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "id",
+            25,
+            false,
+            "users",
+            1,
+            10
+        );
 
-            /**
-             * Mock da cadeia principal.
-             */
-            const offsetMock = jest.fn()
-                .mockResolvedValue(resultMock);
+        expect(query.mocks.where).toHaveBeenCalledWith(
+            "id",
+            25
+        );
 
+        expect(query.mocks.orderBy).toHaveBeenCalledWith(
+            "id",
+            "asc"
+        );
 
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
-
-
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
-
-
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
-
-
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
-
-
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
-
-
-            /**
-             * Mock do count.
-             */
-            const countMock = jest.fn()
-                .mockResolvedValue([
-                    { count: 1 }
-                ]);
-
-
-            const countAndWhereMock = jest.fn(() => ({
-                count: countMock
-            }));
-
-
-            const countWhereMock = jest.fn(() => ({
-                andWhere: countAndWhereMock
-            }));
-
-
-            knex.mockReturnValue({
-                where: countWhereMock
-            });
-
-
-            /**
-             * Executamos com value numérico.
-             */
-            await findWithScope(
-                10,
-                "user_id",
-                "id",
-                25,
-                false,
-                "users",
-                1,
-                10
-            );
-
-
-            /**
-             * Como value = 25,
-             * esperamos igualdade:
-             *
-             * .where("id", 25)
-             */
-            expect(whereMock).toHaveBeenCalledWith(
-                "id",
-                25
-            );
-
-
-            /**
-             * Verifica o session scope.
-             */
-            expect(andWhereMock).toHaveBeenCalledWith(
-                "user_id",
-                10
-            );
-
-
-            /**
-             * Página 1.
-             */
-            expect(offsetMock).toHaveBeenCalledWith(0);
-
-        }
-    );
+        expect(response).toEqual({
+            result: resultMock[0],
+            total: 1
+        });
+    });
 
 
     /**
@@ -358,178 +209,65 @@ describe("findWithScope", () => {
      * =========================================================
      */
 
-    test(
-        "deve tratar uma string numérica como número",
-        async () => {
+    test("deve realizar busca por igualdade quando value for uma string numérica", async () => {
+        const { query } = setupKnex({
+            result: [{ id: 25 }],
+            count: 1
+        });
 
-            const offsetMock = jest.fn()
-                .mockResolvedValue([
-                    {
-                        id: 25
-                    }
-                ]);
+        await findWithScope(
+            10,
+            "user_id",
+            "id",
+            "25",
+            false,
+            "users",
+            1,
+            10
+        );
 
-
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
-
-
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
-
-
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
-
-
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
-
-
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
-
-
-            knex.mockReturnValue({
-                where: jest.fn(() => ({
-                    andWhere: jest.fn(() => ({
-                        count: jest.fn()
-                            .mockResolvedValue([
-                                { count: 1 }
-                            ])
-                    }))
-                }))
-            });
-
-
-            /**
-             * "25" é uma string, mas:
-             *
-             * isNaN("25") === false
-             *
-             * Portanto seu código entra na busca numérica.
-             */
-            await findWithScope(
-                10,
-                "user_id",
-                "id",
-                "25",
-                false,
-                "users",
-                1,
-                10
-            );
-
-
-            expect(whereMock).toHaveBeenCalledWith(
-                "id",
-                "25"
-            );
-
-        }
-    );
+        expect(query.mocks.where).toHaveBeenCalledWith(
+            "id",
+            "25"
+        );
+    });
 
 
     /**
      * =========================================================
-     * MULTIPLE
+     * MÚLTIPLOS RESULTADOS
      * =========================================================
      */
 
-    test(
-        "deve respeitar multiple quando realizar busca textual",
-        async () => {
+    test("deve retornar todos os registros quando multiple for true", async () => {
+        const resultMock = [
+            { id: 1 },
+            { id: 2 }
+        ];
 
-            const resultMock = [
-                { id: 1 },
-                { id: 2 }
-            ];
+        const { query } = setupKnex({
+            result: resultMock,
+            count: 2
+        });
 
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "name",
+            "João",
+            true,
+            "users",
+            1,
+            10
+        );
 
-            const offsetMock = jest.fn()
-                .mockResolvedValue(resultMock);
+        expect(response).toEqual({
+            result: resultMock,
+            total: 2
+        });
 
-
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
-
-
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
-
-
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
-
-
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
-
-
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
-
-
-            knex.mockReturnValue({
-                where: jest.fn(() => ({
-                    andWhere: jest.fn(() => ({
-                        count: jest.fn()
-                            .mockResolvedValue([
-                                { count: 2 }
-                            ])
-                    }))
-                }))
-            });
-
-
-            /**
-             * multiple = true
-             */
-            const response = await findWithScope(
-                10,
-                "user_id",
-                "name",
-                "João",
-                true,
-                "users",
-                1,
-                10
-            );
-
-
-            /**
-             * Como estamos testando findWithScope,
-             * aqui verificamos o comportamento final.
-             */
-            expect(response).toEqual({
-                result: resultMock,
-                total: [
-                    { count: 2 }
-                ]
-            });
-
-        }
-    );
+        expect(query.mocks.limit).toHaveBeenCalledWith(10);
+    });
 
 
     /**
@@ -538,83 +276,27 @@ describe("findWithScope", () => {
      * =========================================================
      */
 
-    test(
-        "deve calcular corretamente a página",
-        async () => {
+    test("deve calcular corretamente o offset da página", async () => {
+        const { query } = setupKnex({
+            result: [{ id: 21 }],
+            count: 1
+        });
 
-            const offsetMock = jest.fn()
-                .mockResolvedValue([
-                    { id: 21 }
-                ]);
+        await findWithScope(
+            10,
+            "user_id",
+            "id",
+            21,
+            false,
+            "users",
+            3,
+            10
+        );
 
+        expect(query.mocks.limit).toHaveBeenCalledWith(10);
 
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
-
-
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
-
-
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
-
-
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
-
-
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
-
-
-            knex.mockReturnValue({
-                where: jest.fn(() => ({
-                    andWhere: jest.fn(() => ({
-                        count: jest.fn()
-                            .mockResolvedValue([
-                                { count: 1 }
-                            ])
-                    }))
-                }))
-            });
-
-
-            /**
-             * Página 3
-             * Limite 10
-             *
-             * offset:
-             *
-             * (3 - 1) * 10
-             * = 20
-             */
-            await findWithScope(
-                10,
-                "user_id",
-                "id",
-                21,
-                false,
-                "users",
-                3,
-                10
-            );
-
-
-            expect(offsetMock).toHaveBeenCalledWith(20);
-
-        }
-    );
+        expect(query.mocks.offset).toHaveBeenCalledWith(20);
+    });
 
 
     /**
@@ -623,74 +305,91 @@ describe("findWithScope", () => {
      * =========================================================
      */
 
-    test(
-        "deve retornar undefined quando não encontrar resultados",
-        async () => {
+    test("deve retornar undefined quando não encontrar registros", async () => {
+        setupKnex({
+            result: [],
+            count: 0
+        });
 
-            /**
-             * Simula banco sem resultados.
-             */
-            const offsetMock = jest.fn()
-                .mockResolvedValue([]);
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "id",
+            999,
+            false,
+            "users",
+            1,
+            10
+        );
 
-
-            const limitMock = jest.fn(() => ({
-                offset: offsetMock
-            }));
-
-
-            const orderByMock = jest.fn(() => ({
-                limit: limitMock
-            }));
-
-
-            const andWhereMock = jest.fn(() => ({
-                orderBy: orderByMock
-            }));
+        expect(response).toBeUndefined();
+    });
 
 
-            const whereMock = jest.fn(() => ({
-                andWhere: andWhereMock
-            }));
+    /**
+     * =========================================================
+     * COLUNA DE ESCOPO INEXISTENTE
+     * =========================================================
+     */
+
+    test("deve retornar undefined quando a coluna de escopo não existir", async () => {
+        const { query, countQuery } = setupKnex({
+            columns: {
+                id: {},
+                name: {}
+            }
+        });
+
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "name",
+            "João",
+            false,
+            "users",
+            1,
+            10
+        );
+
+        expect(response).toBeUndefined();
+
+        expect(query.mocks.andWhere).not.toHaveBeenCalled();
+
+        expect(countQuery.mocks.andWhere).not.toHaveBeenCalled();
+
+        expect(query.mocks.offset).not.toHaveBeenCalled();
+    });
 
 
-            const fromMock = jest.fn(() => ({
-                where: whereMock
-            }));
+    /**
+     * =========================================================
+     * CONTAGEM DOS RESULTADOS
+     * =========================================================
+     */
 
+    test("deve converter o total de resultados para Number", async () => {
+        const { countQuery } = setupKnex({
+            result: [{ id: 1 }],
+            count: "15"
+        });
 
-            knex.select.mockReturnValue({
-                from: fromMock
-            });
+        const response = await findWithScope(
+            10,
+            "user_id",
+            "name",
+            "João",
+            false,
+            "users",
+            1,
+            10
+        );
 
+        expect(countQuery.mocks.count).toHaveBeenCalledWith(
+            "* as count"
+        );
 
-            knex.mockReturnValue({
-                where: jest.fn(() => ({
-                    andWhere: jest.fn(() => ({
-                        count: jest.fn()
-                            .mockResolvedValue([
-                                { count: 0 }
-                            ])
-                    }))
-                }))
-            });
-
-
-            const response = await findWithScope(
-                10,
-                "user_id",
-                "id",
-                999,
-                false,
-                "users",
-                1,
-                10
-            );
-
-
-            expect(response).toBeUndefined();
-
-        }
-    );
+        expect(response.total).toBe(15);
+        expect(typeof response.total).toBe("number");
+    });
 
 });
