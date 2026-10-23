@@ -4,10 +4,10 @@
 
 Atualmente, apenas a versão mais recente do projeto recebe atualizações de segurança.
 
-| Version        | Supported |
-| -------------- | --------- |
-| Latest         | ✅         |
-| Older versions | ❌         |
+| Version | Supported |
+|---|---|
+| Latest | ✅ |
+| Older versions | ❌ |
 
 ---
 
@@ -21,13 +21,13 @@ Em vez disso, entre em contato com o mantenedor utilizando o método de contato 
 
 Ao reportar uma vulnerabilidade, inclua, sempre que possível:
 
-* descrição detalhada da vulnerabilidade;
-* impacto esperado;
-* passos para reproduzir;
-* ambiente utilizado;
-* versão afetada;
-* evidências (logs, prints ou vídeos, quando aplicável);
-* sugestão de correção (opcional).
+- descrição detalhada da vulnerabilidade;
+- impacto esperado;
+- passos para reproduzir;
+- ambiente utilizado;
+- versão afetada;
+- evidências (logs, prints ou vídeos, quando aplicável);
+- sugestão de correção (opcional).
 
 ---
 
@@ -54,16 +54,26 @@ A divulgação responsável ajuda a proteger os usuários do projeto.
 
 Este projeto busca seguir boas práticas de segurança, incluindo:
 
-* autenticação baseada em JWT;
-* controle de acesso por níveis de permissão;
-* validação de entradas;
-* consultas parametrizadas com Knex;
-* proteção contra SQL Injection;
-* sanitização de dados;
-* proteção contra XSS quando aplicável;
-* utilização de Helmet;
-* Rate Limiting para endpoints sensíveis;
-* gerenciamento seguro de variáveis de ambiente.
+- autenticação baseada em JWT e gerenciamento de sessões;
+- controle de acesso por níveis de permissão (RBAC) e Policies;
+- restrição de acesso aos dados por escopo institucional, utilizando `BaseScope`;
+- validação de entradas;
+- consultas parametrizadas com Knex para reduzir o risco de SQL Injection;
+- sanitização de dados quando aplicável;
+- proteção contra XSS quando aplicável;
+- utilização de Helmet, conforme a configuração da aplicação;
+- rate limiting no login e nos endpoints em que o middleware `apiLimiter` está aplicado;
+- suporte opcional ao Redis para armazenamento compartilhado dos limites de requisições, quando configurado;
+- gerenciamento seguro de variáveis de ambiente;
+- utilização de bcrypt para hash de senhas;
+- logs estruturados para auxiliar no diagnóstico e na investigação de eventos de segurança;
+- testes automatizados para componentes críticos de autenticação, autorização, rate limiting e escopo de dados.
+
+O rate limiting complementa os mecanismos de autenticação, autorização e validação, mas não os substitui.
+
+O `BaseScope` deve aplicar os filtros de escopo diretamente às consultas ao banco de dados. Quando a coluna de escopo esperada não estiver disponível, a consulta não deve prosseguir sem o filtro de segurança correspondente.
+
+Segredos, senhas, tokens completos e credenciais de infraestrutura não devem ser registrados nos logs nem enviados ao controle de versão.
 
 ---
 
