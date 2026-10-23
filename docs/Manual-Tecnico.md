@@ -146,7 +146,7 @@ A validação de autorização e a aplicação do escopo são mecanismos complem
 
 ### 8.4 Rate limiting
 
-O endpoint de login utiliza `express-rate-limit` para limitar tentativas de autenticação em um intervalo definido. O projeto inclui `rate-limit-redis` para permitir que o armazenamento dos limites seja feito em Redis quando configurado.
+O endpoint de login utiliza `express-rate-limit` para limitar tentativas de autenticação em um intervalo definido. A aplicação também possui o middleware `apiLimiter`, destinado a limitar a frequência de requisições nos endpoints em que foi aplicado. O projeto inclui `rate-limit-redis` para permitir que o armazenamento dos limites seja feito em Redis quando configurado.
 
 O rate limiting reduz a exposição a tentativas automatizadas e ataques de força bruta. Os limites concretos, a janela temporal e o comportamento quando o Redis está indisponível devem ser consultados na configuração vigente.
 
@@ -170,7 +170,7 @@ Os mecanismos de segurança documentados incluem:
 - hash de senhas com bcrypt;
 - autorização por RBAC e Policies;
 - restrição de acesso a dados por BaseScope e escopo `own`;
-- limitação de tentativas de login;
+- Rate limiting no login e nos endpoints protegidos pelo middleware `apiLimiter`;
 - tratamento centralizado de erros;
 - logs estruturados para diagnóstico e eventos de segurança;
 - testes automatizados dos componentes críticos.
@@ -184,7 +184,9 @@ O projeto utiliza Jest para testes automatizados e Supertest para testes HTTP. A
 - middlewares de autenticação e autorização;
 - validação de paginação;
 - tratamento centralizado de erros;
-- rate limiter de login;
+- rate limiter de login e middleware `apiLimiter` (nos cenários cobertos pelos testes existentes);
+- consultas com escopo presente e comportamento quando a coluna de escopo não existe;
+- utilitários de busca e tratamento de parâmetros;
 - operações compartilhadas de DBUtils;
 - consultas com e sem escopo;
 - operações de inserção, atualização e exclusão;
@@ -215,6 +217,8 @@ O **BaseScope** aplica filtros de escopo diretamente às consultas de persistên
 Quando aplicável, o escopo deve ser aplicado não apenas em consultas de leitura, mas também nas operações de atualização e exclusão, para impedir que o usuário altere registros fora do seu contexto autorizado.
 
 A integração entre escopo e paginação deve preservar os filtros de autorização tanto na consulta dos registros quanto na contagem utilizada para gerar metadados de paginação.
+
+No utilitário `findWithScope`, a existência da coluna usada como escopo é verificada antes da consulta. Se a coluna não existir, a função retorna `undefined`, evitando executar uma consulta sem o filtro de escopo esperado. O chamador deve tratar esse retorno de acordo com o contrato do serviço; não deve interpretá-lo como autorização para consultar os registros sem restrição.
 
 Benefícios pretendidos:
 

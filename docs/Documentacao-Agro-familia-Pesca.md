@@ -220,31 +220,39 @@ Assim, autorização e filtragem de dados são tratadas como mecanismos compleme
 
 Além do controle de acesso baseado em papéis (RBAC), a API utiliza **escopo contextual de dados**.
 
-O mecanismo é implementado através do **BaseScope**, responsável por aplicar os filtros de acesso diretamente nas consultas ao banco de dados.
+O mecanismo é implementado através do `BaseScope`, responsável por aplicar os filtros de acesso diretamente nas consultas ao banco de dados.
 
-Dessa forma, os endpoints que realizam consultas retornam somente informações compatíveis com o escopo do usuário autenticado.
+A função `findWithScope`, localizada em `shared/Utils/dbUtils.js`, complementa esse mecanismo ao verificar a existência da coluna de escopo antes de executar a consulta. Quando a coluna necessária não existe, a função retorna `undefined`, evitando que a consulta prossiga sem a restrição de escopo esperada.
 
-Entre os escopos utilizados está o **own**, que restringe o acesso aos dados pertencentes ao próprio usuário quando essa regra se aplica ao recurso consultado.
+As consultas de busca e contagem devem preservar os filtros de escopo aplicáveis, garantindo que os resultados e os metadados de paginação correspondam ao conjunto de registros autorizado.
 
-A aplicação do escopo diretamente na consulta substitui a abordagem anterior, na qual os dados eram recuperados e filtrados posteriormente pela aplicação.
+Entre os escopos utilizados está o `own`, que restringe o acesso aos dados pertencentes ao próprio usuário quando essa regra se aplica ao recurso consultado.
 
-Essa mudança melhora:
+A aplicação do escopo diretamente na consulta contribui para:
 
-* **Performance**, reduzindo o volume de dados transferidos e processados;  
-
-* **Segurança**, evitando o carregamento desnecessário de registros fora do escopo;  
-
-* **Padronização**, centralizando a aplicação das regras de escopo;  
-
-* **Manutenibilidade**, reduzindo a duplicação da lógica de filtragem entre os módulos.
+- **Segurança:** reduz o risco de retorno de registros fora do escopo autorizado.
+- **Performance:** reduz o volume de dados transferidos e processados desnecessariamente.
+- **Padronização:** centraliza a aplicação das regras de escopo.
+- **Manutenibilidade:** reduz a duplicação da lógica de filtragem entre os módulos.
 
 ### 5.4 Rate Limiting
 
-A rota de autenticação utiliza `express-rate-limit` para limitar a quantidade de tentativas de login em determinado intervalo, reduzindo a exposição a ataques de força bruta e tentativas automatizadas. A configuração atual utiliza integração com Redis por meio de `rate-limit-redis`, conforme a configuração do ambiente. A disponibilidade do armazenamento Redis depende da configuração e da conexão com o serviço.
+A API utiliza `express-rate-limit` para limitar a frequência de requisições e reduzir o risco de uso abusivo dos endpoints.
+
+A proteção inclui mecanismos distintos de limitação de requisições:
+
+- **Autenticação:** limita a quantidade de tentativas de login em determinado intervalo, contribuindo para mitigar ataques de força bruta e tentativas automatizadas.
+- **Middleware `apiLimiter`:** permite controlar a frequência de requisições nos endpoints em que o middleware está aplicado.
+
+A implementação utiliza integração com Redis por meio de `rate-limit-redis`, conforme a configuração do ambiente. A utilização desse armazenamento depende da configuração e da disponibilidade do serviço Redis.
+
+Os limites, os intervalos de contagem e os endpoints protegidos dependem da configuração efetiva dos middlewares.
+
+O rate limiting é uma camada complementar de proteção. Ele não substitui os mecanismos de autenticação, autorização, validação de parâmetros ou controle de escopo dos dados.
 
 ### 5.5 Observabilidade e Logs
 
-A API utiliza `pino` e `pino-http` para geração de logs estruturados. O logger da aplicação registra eventos operacionais e requisições HTTP, apoiando diagnóstico e acompanhamento do comportamento da API.
+A API utiliza `pino` e `pino-http` para geração de logs estruturados. O logger da aplicação registra eventos operacionais, requisições HTTP e eventos relevantes para diagnóstico e acompanhamento do comportamento da API.
 
 A implementação separa os registros em arquivos por finalidade:
 
@@ -252,13 +260,26 @@ A implementação separa os registros em arquivos por finalidade:
 - `error.log`: registros de erro.
 - `security.log`: eventos e avisos relacionados à segurança.
 
-Os arquivos de log são gerados em diretório próprio e não devem ser versionados no Git. A separação de `security.log` não implica que os eventos de segurança deixem de aparecer em `app.log`. Rotação diária dos arquivos não é descrita aqui como funcionalidade concluída.
+Os arquivos de log são gerados em diretório próprio e não devem ser versionados no Git. A separação de `security.log` não implica que os eventos de segurança deixem de aparecer em `app.log`.
 
 ### 5.6 Testes Automatizados e Integração Contínua
 
-O projeto utiliza `jest` para testes automatizados e `supertest` para testes de integração HTTP. A cobertura inclui componentes de autenticação e autorização, paginação, tratamento de erros e operações compartilhadas da camada de persistência.
+O projeto utiliza `jest` para testes automatizados e `supertest` para testes de integração HTTP.
 
-O workflow de Integração Contínua (CI) é executado em eventos de `push` e `pull_request` direcionados às branches `main` e `develop`. O fluxo utiliza Node.js 22, instala as dependências com npm, verifica a sintaxe de `server.js` e executa a suíte de testes. Como a API foi movida para a raiz do repositório, os comandos do workflow devem ser executados nesse diretório, sem depender do caminho antigo `API_agrofamilia_pesca`.
+A suíte de testes contempla componentes de autenticação e autorização, paginação, tratamento de erros e operações compartilhadas da camada de persistência.
+
+Entre os cenários de teste relacionados às melhorias recentes estão:
+
+- Comportamento do middleware `apiLimiter`.
+- Consultas com aplicação de escopo.
+- Comportamento de `findWithScope` quando a coluna de escopo existe ou não existe.
+- Preservação das restrições de escopo nas consultas.
+- Tratamento de parâmetros utilizados nas funções compartilhadas de busca.
+
+O workflow de Integração Contínua (CI) é executado em eventos de `push` e `pull_request` direcionados às branches `main` e `develop`. O fluxo utiliza Node.js 22, instala as dependências com npm, verifica a sintaxe de `server.js` e executa a suíte de testes.
+
+Como a API está localizada na raiz do repositório, os comandos do workflow devem utilizar os arquivos dessa localização, sem depender do caminho antigo `API_agrofamilia_pesca`.
+
 
 ## 6. Diagrama Conceitual (Descrição)
 ### 6.1 Diagrama de Arquitetura (Descrição Textual)

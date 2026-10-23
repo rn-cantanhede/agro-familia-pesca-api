@@ -297,6 +297,19 @@ Os endpoints de consulta devem respeitar o escopo de acesso do usuário. O escop
 
 A combinação entre `BaseScope` e paginação permite controlar tanto **quais registros podem ser acessados** quanto **quantos registros são retornados por consulta**.
 
+### Validação do escopo nas consultas
+
+As consultas que dependem de escopo devem manter suas restrições
+de acesso diretamente no banco de dados.
+
+A função `findWithScope`, localizada em `shared/Utils/dbUtils.js`,
+verifica a existência da coluna de escopo antes de executar a consulta.
+Quando essa coluna não existe, a função retorna `undefined`, evitando
+que a consulta prossiga sem o filtro de escopo esperado.
+
+Esse comportamento ajuda a prevenir o retorno indevido de registros
+quando a estrutura consultada não permite aplicar a restrição necessária.
+
 ## Controle de Acesso
 
 A API combina dois mecanismos complementares.
@@ -330,7 +343,7 @@ A API utiliza múltiplas camadas de proteção, incluindo:
 - Senhas protegidas com `bcryptjs`;
 - Controle de acesso baseado em RBAC;
 - Escopo de dados aplicado diretamente nas consultas;
-- Rate limiting na rota de login;
+- Rate limiting no login e nos endpoints protegidos pelo middleware `apiLimiter`;
 - Validação de IDs antes de operações destrutivas;
 - Logs estruturados para diagnóstico e auditoria;
 - Política de segurança documentada em `SECURITY.md`.
@@ -350,6 +363,9 @@ Os testes abrangem, entre outros:
 - Paginação;
 - Tratamento de erros;
 - Rate limiting do login;
+- Rate limiting do login e do middleware `apiLimiter`;
+- Consultas com escopo;
+- Consultas em cenários nos quais a coluna de escopo não existe;
 - Consultas com e sem escopo;
 - Operações de inserção, atualização e exclusão;
 - Login e validações relacionadas à sessão;
@@ -393,7 +409,7 @@ Essa abordagem mantém a separação entre as regras de negócio e os detalhes d
 - Segurança em profundidade (*Defense in Depth*);
 - Logs estruturados com Pino;
 - Logging HTTP com Pino HTTP;
-- Rate limiting para autenticação;
+- Rate limiting para controle da frequência de requisições;
 - Aplicação de escopo diretamente nas consultas;
 - Paginação das consultas;
 - Separação entre autorização e regras de negócio;
