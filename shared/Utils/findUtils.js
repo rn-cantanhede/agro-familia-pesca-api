@@ -6,27 +6,29 @@ const Erros = require("../errors/Errors");
  */
 
 function convertString(value) {
+    let text;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+    };
+
+    if (typeof value == "number") {
+        return value;
+    };
+
     if (value.includes(" ")) {
-        const string = value.split(" ");
-        const convertedString = string.join("-");
-        return convertedString;
-    };
-    
-    const string = value.split("-");
-    const convertedString = string.join(" ");
-    return convertedString;
-};
-
-/**
- * Faz a verificação de tipo
- */
-
-function NumberOrString(value) {
-    if (isNaN(value)) {
-        return true;
+        return value.replaceAll(" ", "-");
     } else {
-        return false;
+        text = value;
     };
+
+    if (value.includes("-")) {
+        return value.replaceAll("-", " ");
+    } else {
+        text = value;
+    };
+
+    return text;
 };
 
 /**
@@ -35,7 +37,7 @@ function NumberOrString(value) {
  */
 
 async function find(value, page, limit, method) {
-    const result = await method(value, page, limit);
+    const result = await method(convertString(value), page, limit);
 
     if (!result) {
         throw new Erros("Não encontrado", 404);
@@ -51,9 +53,8 @@ async function find(value, page, limit, method) {
  */
 
 async function findByIdName(value, page, limit, idMethod, nameMethod) {
-    if (NumberOrString(value)) {
-        const stringConverted = convertString(value);
-        return find(stringConverted, page, limit, nameMethod);
+    if (isNaN(value)) {
+        return find(convertString(value), page, limit, nameMethod);
     };
 
     return find(value, page, limit, idMethod);
@@ -69,18 +70,17 @@ async function findByIdName(value, page, limit, idMethod, nameMethod) {
 async function findByScope(sessionID, sessionField, fieldID, fieldName,
     value, page, limit, method
 ) {
-    if (!NumberOrString(value)) {
+    if (!isNaN(value)) {
         const result = await method(sessionID, sessionField, fieldID, value, page, limit);
 
         if (result == "" || result == undefined) {
             throw new Erros("Não encontrado", 404);
-
+            
         };
         return result;
     };
-
-    const stringConverted = convertString(value);
-    const result = await method(sessionID, sessionField, fieldName, stringConverted, page, limit);
+    
+    const result = await method(sessionID, sessionField, fieldName, convertString(value), page, limit);
     if (result == "" || result == undefined) {
         throw new Erros("Não encontrado", 404);
     };
@@ -93,7 +93,7 @@ async function findByScope(sessionID, sessionField, fieldID, fieldName,
  */
 
 async function findByInterval(inicio, fim, page, limit, method) {
-    const result = await method(inicio, fim, page, limit);
+    const result = await method(convertString(inicio), convertString(fim), page, limit);
 
     if (!result) {
         throw new Erros("Não encontrado", 404);
@@ -108,7 +108,7 @@ async function findByInterval(inicio, fim, page, limit, method) {
  * Lança erro 404 caso nenhum registro seja retornado.
  */
 async function findByIntervalScope(sessionID, sessionField, field, inicio, fim, page, limit, method) {
-    const result = await method(sessionID, sessionField, field, inicio, fim, page, limit);
+    const result = await method(sessionID, sessionField, field, convertString(inicio), convertString(fim), page, limit);
 
     if (!result) {
         throw new Erros("Não encontrado", 404);
@@ -144,35 +144,6 @@ function VerifyNivel(user) {
     };
 };
 
-/**
- * Faz a verificação para listar usuarios onde o a secretaria
- * ou a associção seja igual a requirida.
- * 
- * Abandonado
- * 
- */
-function listUsers(usuarioObj, field, value) {
-    if (Array.isArray(usuarioObj)) {
-        const usuariosList = usuarioObj.filter(
-            (element) => element[field] == value
-        );
-
-        if (usuariosList.length === 0) {
-            throw new Erros("Não encontrado", 404);
-        }
-
-        return usuariosList;
-    };
-
-    if (!Array.isArray(usuarioObj)) {
-        if (usuarioObj[field] == value) {
-            return usuarioObj
-        } else {
-            throw new Erros("Não encontrado", 404);
-        };
-    };
-};
-
 module.exports = {
     find,
     findByIdName,
@@ -180,6 +151,5 @@ module.exports = {
     findByInterval,
     findByIntervalScope,
     VerifyNivel,
-    listUsers,
     convertString
 };
