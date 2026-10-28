@@ -1,4 +1,4 @@
-const SecuteKnex = require("../connectionSecute");
+const SecuteKnex = require("../../connectionSecute");
 
 module.exports = async function securityOperators() {
     const exists = await SecuteKnex.schema.hasTable("security_operators");
