@@ -16,11 +16,6 @@ module.exports = async function securityControl(req, res, next) {
         .table(table)
         .where("target_value", req.path);
 
-    console.log(req.method);
-    console.log(req.path);
-    console.log(req.url);
-    console.log(req.originalUrl);
-
     if (routeControl(get)) {
         return next(new Erros("Rota fudida"));
     } else {
