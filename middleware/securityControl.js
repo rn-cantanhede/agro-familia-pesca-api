@@ -1,4 +1,5 @@
 const secureLogger = require("../config/secureLogger");
+const knex = require("../database/connection");
 const secureKnex = require("../database/connectionSecute");
 const Erros = require("../shared/errors/Errors");
 const table = "security_controls";
@@ -30,6 +31,17 @@ function featureControl(value) {
 function globalControl(value) {
     return value.some(element => {
         return element.control_type === "global" &&
+            element.enabled === 1 &&
+            element.expires > new Date();
+    });
+};
+
+//Revoga sessões que acessa uma rota ou de toda api. 
+// Exemplo: /, /admin/usuarios, /admin/, /admin/programas/3
+// /usuarios/(revoga token de todas as rotas) ou /(revoga token de todos os endpoits)
+function tokenControl(value) {
+    return value.some(element => {
+        return element.control_type === "token" &&
             element.enabled === 1 &&
             element.expires > new Date();
     });
@@ -75,6 +87,25 @@ module.exports = async function securityControl(req, res, next) {
             resource: "api",
             action: "block"
         }, `Endpoints foram bloqueados: ${req.path}`);
+        return next(new Erros("Erro interno no servidor", 500));
+    };
+
+    if (tokenControl(get)) {
+        await knex.table("sessoes")
+        .where("ID_PESSOA", req.session.user.id)
+        .update("REVOGADO", new Date());
+
+        req.log.error({
+            event: "SECURE_API",
+            resource: "api",
+            action: "block",
+        }, `Token revogado: ${req.session.user}`);
+
+        secureLogger.error({
+            event: "SECURE_API",
+            resource: "api",
+            action: "block"
+        }, `Token revogado: ${req.session.user}`);
         return next(new Erros("Erro interno no servidor", 500));
     };
 
