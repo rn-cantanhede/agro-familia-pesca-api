@@ -99,13 +99,13 @@ module.exports = async function securityControl(req, res, next) {
             event: "SECURE_API",
             resource: "api",
             action: "block",
-        }, `Token revogado: ${req.session.user}`);
+        }, `Token revogado: ${req.session.user.login}`);
 
         secureLogger.error({
             event: "SECURE_API",
             resource: "api",
             action: "block"
-        }, `Token revogado: ${req.session.user}`);
+        }, `Token revogado: ${req.session.user.login}`);
         return next(new Erros("Erro interno no servidor", 500));
     };
 
