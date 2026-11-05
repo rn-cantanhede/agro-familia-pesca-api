@@ -26,13 +26,13 @@ async function createDB() {
 
     await connection.end();
 
-    console.log("Database criado se não existir");
+    console.log("Database db_agrofamilia_pesca criado se não existir");
 
     logger.info({
         event: "CREATE_DATABASE",
         resource: "database",
         action: "create"
-    }, "Database criado se não existir");
+    }, "Database db_agrofamilia_pesca criado se não existir");
 }
 
 module.exports = createDB;

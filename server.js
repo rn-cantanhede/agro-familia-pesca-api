@@ -5,18 +5,20 @@ const logger = require("./config/logger");
 const knex = require("./database/connection");
 const connectionCheck = require("./database/connectionCheck");
 const createDB = require("./database/createDB");
+const createSecuteDB = require("./database/dynamicSecurityControls/createSecuteDB");
 
 const PORT = process.env.PORT;
 
 /**
  * Inicializa o servidor HTTP somente após
  * validar a conexão com o banco de dados.
- */
+*/
 
 (async function startServer() {
     try {
         // Cria o banco caso não exista
         await createDB();
+        await createSecuteDB();
 
         // Só depois cria a conexão com o Knex
         const knex = require("./database/connection");
