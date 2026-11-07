@@ -11,10 +11,13 @@ const loginRoutes = require("./login.routes");
 const associacaoRoutes = require("./associacao.routes");
 const usuarioRoutes = require("./usuario.routes");
 const apiLimiter = require("../middleware/apiLimiter");
+const securityControl = require("../middleware/securityControl");
 
 /**
  * Registro das rotas da API por contexto de domínio.
- */
+*/
+router.use(securityControl);
+
 //Rota publica responsavel pelo login e logout
 router.use(loginRoutes);
 
