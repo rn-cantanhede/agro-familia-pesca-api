@@ -7,87 +7,35 @@ jest.mock("../../../config/logger", () => ({
     error: jest.fn(),
 }));
 
-
-/**
- * Redis opcional.
-
-Para utilizar Redis, é necessário ter um Redis Server executando localmente.
-
-Após iniciar o Redis em qualquer ambiente:
-
-  REDIS_URL=redis://localhost:6379
-
-Depois:
-  1. Configure REDIS_URL no .env.
-  2. Descomente.
-  3. Inicie a aplicação.
-
-Observação:
-O pacote "redis" é apenas o cliente Redis para Node.js.
-Ele NÃO instala o Redis Server.
- */
-
-// const mockRedisClient = {
-//     on: jest.fn(),
-//     connect: jest.fn().mockResolvedValue(undefined),
-//     sendCommand: jest.fn(),
-// };
-
-// jest.mock("redis", () => ({
-//     createClient: jest.fn(() => mockRedisClient),
-// }));
-
-// Contador em memória para simular o Redis
-// const mockHits = new Map();
-// const mockResetTimes = new Map();
-
-// jest.mock("rate-limit-redis", () => ({
-//     RedisStore: jest.fn().mockImplementation(() => ({
-//         init: jest.fn(),
-
-//         increment: jest.fn(async (key) => {
-//             const now = Date.now();
-//             let resetTime = mockResetTimes.get(key);
-
-//             if (!resetTime || resetTime.getTime() <= now) {
-//                 resetTime = new Date(now + 15 * 60 * 1000);
-//                 mockResetTimes.set(key, resetTime);
-//                 mockHits.set(key, 0);
-//             }
-
-//             const totalHits = (mockHits.get(key) || 0) + 1;
-//             mockHits.set(key, totalHits);
-
-//             return {
-//                 totalHits,
-//                 resetTime,
-//             };
-//         }),
-
-//         decrement: jest.fn(async (key) => {
-//             const totalHits = mockHits.get(key) || 0;
-//             mockHits.set(key, Math.max(0, totalHits - 1));
-//         }),
-
-//         resetKey: jest.fn(async (key) => {
-//             mockHits.delete(key);
-//             mockResetTimes.delete(key);
-//         }),
-//     })),
-// }));
-
-const loginLimiter = require("../../../middleware/loginLimiter");
+jest.mock("../../../config/secureLogger", () => ({
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+}));
 
 describe("loginLimiter", () => {
     let app;
+    let loginLimiter;
+    let logger;
+    let secureLogger;
+
+    const mensagem = "Muitas tentativas de login. Tente novamente mais tarde";
 
     beforeEach(() => {
-        // Isola os testes para que um não afete o outro
-        // mockHits.clear();
-        // mockResetTimes.clear();
+        jest.resetModules();
+
+        // Importa os mocks da nova instância dos módulos
+        logger = require("../../../config/logger");
+        secureLogger = require("../../../config/secureLogger");
+
+        // Importa uma nova instância do limiter
+        loginLimiter = require("../../../middleware/loginLimiter");
+
+        jest.clearAllMocks();
 
         app = express();
 
+        app.use(express.json());
         app.use(loginLimiter);
 
         app.post("/login", (req, res) => {
@@ -101,11 +49,13 @@ describe("loginLimiter", () => {
      * ==========================================================
      * TRUE
      * ==========================================================
-     *
      */
+
     test("deve permitir até 5 requisições", async () => {
         for (let i = 1; i <= 5; i++) {
-            const result = await request(app).post("/login");
+            const result = await request(app)
+                .post("/login")
+                .send({ LOGIN: "usuario" });
 
             expect(result.status).toBe(200);
         }
@@ -115,19 +65,23 @@ describe("loginLimiter", () => {
      * ==========================================================
      * BLOCK
      * ==========================================================
-     *
      */
+
     test("deve bloquear a 6ª requisição", async () => {
         for (let i = 1; i <= 5; i++) {
-            await request(app).post("/login");
+            await request(app)
+                .post("/login")
+                .send({ LOGIN: "usuario" });
         }
 
-        const result = await request(app).post("/login");
+        const result = await request(app)
+            .post("/login")
+            .send({ LOGIN: "usuario" });
 
         expect(result.status).toBe(429);
 
         expect(result.body).toEqual({
-            error: "Muitas tentativas de login. Tente novamente mais tarde",
+            error: mensagem,
         });
     });
 
@@ -135,14 +89,84 @@ describe("loginLimiter", () => {
      * ==========================================================
      * HEADERS
      * ==========================================================
-     *
      */
-    test("deve enviar os headers de rate limit", async () => {
-        const result = await request(app).post("/login");
 
-        // expect(result.status).toBe(200);
+    test("deve enviar os headers de rate limit", async () => {
+        const result = await request(app)
+            .post("/login")
+            .send({ LOGIN: "usuario" });
+
+        expect(result.status).toBe(200);
+
         expect(result.headers).toHaveProperty("ratelimit");
+
         expect(result.headers).not.toHaveProperty("x-ratelimit-limit");
         expect(result.headers).not.toHaveProperty("x-ratelimit-remaining");
+    });
+
+    /*
+     * ==========================================================
+     * LOGS
+     * ==========================================================
+     */
+
+    test("deve registrar o bloqueio no logger da aplicação", async () => {
+        for (let i = 0; i < 6; i++) {
+            await request(app)
+                .post("/login")
+                .send({ LOGIN: "usuario" });
+        }
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            expect.objectContaining({
+                event: "RATE_LIMITER",
+                resource: "authentication",
+                action: "login",
+                userLogin: "usuario",
+            }),
+            mensagem
+        );
+    });
+
+    test("deve registrar o bloqueio no secureLogger", async () => {
+        for (let i = 0; i < 6; i++) {
+            await request(app)
+                .post("/login")
+                .send({ LOGIN: "usuario" });
+        }
+
+        expect(secureLogger.warn).toHaveBeenCalledWith(
+            expect.objectContaining({
+                event: "RATE_LIMITER",
+                resource: "authentication",
+                action: "login",
+                userLogin: "usuario",
+            }),
+            mensagem
+        );
+    });
+
+    /*
+     * ==========================================================
+     * BODY
+     * ==========================================================
+     */
+
+    test("deve bloquear mesmo quando o LOGIN não estiver presente", async () => {
+        for (let i = 0; i < 5; i++) {
+            await request(app).post("/login");
+        }
+
+        const result = await request(app).post("/login");
+
+        expect(result.status).toBe(429);
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            expect.objectContaining({
+                event: "RATE_LIMITER",
+                userLogin: undefined,
+            }),
+            mensagem
+        );
     });
 });
