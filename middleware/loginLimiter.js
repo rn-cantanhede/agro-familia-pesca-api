@@ -54,7 +54,7 @@ const loginLimiter = rateLimiter({
             event: "RATE_LIMITER",
             resource: "authentication",
             action: "login",
-            userLogin: req.body.LOGIN
+            userLogin: req.body?.LOGIN
         };
 
         logger.warn(evento, mensagem);
