@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const app = require("./app");
 const logger = require("./config/logger");
+// const verifyEmailConnection = require("./config/verifyEmailConnection");
 const knex = require("./database/connection");
 const connectionCheck = require("./database/connectionCheck");
 const createDB = require("./database/createDB");
@@ -19,6 +20,9 @@ const PORT = process.env.PORT;
         // Cria o banco caso não exista
         await createDB();
         await createSecuteDB();
+
+        // Verifica a conexão com SMTP
+        // await verifyEmailConnection();
 
         // Só depois cria a conexão com o Knex
         const knex = require("./database/connection");
